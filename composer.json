@@ -1,0 +1,117 @@
+{
+	"name": "legispect/wordpress",
+	"type": "project",
+	"description": "A Wordpress project that uses composer for PHP package management. It aims to provide a observable, quick-to-deploy, easy to configure, environment-agnostic Wordpress project.",
+	"homepage": "https://www.legispect.com",
+	"authors": [
+		{
+			"name": "Cheng Bo-Yan",
+			"email": "markxp@legispect.com"
+		}
+	],
+	"license": "proprietary",
+	"keywords": [
+		"bedrock",
+		"composer",
+		"roots",
+		"wordpress",
+		"wp",
+		"wp-config"
+	],
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "https://wpackagist.org",
+			"only": [
+				"wpackagist-plugin/*",
+				"wpackagist-theme/*"
+			]
+		},
+		{
+			"type": "composer",
+			"url": "https://wp-languages.github.io",
+			"only": [
+				"koodimonni-language/core-zh_tw"
+			]
+		}
+	],
+	"require": {
+		"php": "^8.4",
+		"composer/installers": "^2.3",
+		"vlucas/phpdotenv": "^5.6",
+		"oscarotero/env": "^2.1",
+		"roots/bedrock-autoloader": "^1.0",
+		"roots/bedrock-disallow-indexing": "^2.0",
+		"roots/wordpress": "^6.9",
+		"roots/wp-config": "^1.0",
+		"wpackagist-theme/twentytwentyfour": "^1.4",
+		"wpackagist-plugin/wp-stateless": "^4.0",
+		"wpackagist-plugin/google-site-kit": "^1",
+		"koodimonni-language/core-zh_tw": "^6.9",
+		"open-telemetry/opentelemetry": "^1.0",
+		"open-telemetry/exporter-otlp": "^1.4",
+		"open-telemetry/opentelemetry-auto-wordpress": "^0.1.1",
+		"php-http/guzzle7-adapter": "^1.1",
+		"open-telemetry/transport-grpc": "^1.1",
+		"firebase/php-jwt": "^7.0"
+	},
+	"require-dev": {
+		"roave/security-advisories": "dev-latest",
+		"laravel/pint": "^1.27"
+	},
+	"config": {
+		"optimize-autoloader": true,
+		"preferred-install": "dist",
+		"allow-plugins": {
+			"composer/installers": true,
+			"roots/wordpress-core-installer": true,
+			"koodimonni/composer-dropin-installer": true,
+			"php-http/discovery": true,
+			"tbachert/spi": true
+		}
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true,
+	"extra": {
+		"installer-paths": {
+			"web/app/mu-plugins/{$name}/": [
+				"type:wordpress-muplugin"
+			],
+			"web/app/plugins/{$name}/": [
+				"type:wordpress-plugin"
+			],
+			"web/app/themes/{$name}/": [
+				"type:wordpress-theme"
+			],
+			"web/app/languages/{$name}/": [
+				"type:wordpress-language"
+			]
+		},
+		"wordpress-install-dir": "web/wp"
+	},
+	"scripts": {
+		"lint": [
+			"pint --test"
+		],
+		"lint:fix": [
+			"pint"
+		],
+		"clean": [
+			"rm -rf vendor",
+			"rm -rf web/wp",
+			"rm -rf web/app/plugins/google-site-kit",
+			"rm -rf web/app/plugins/wp-stateless"
+		],
+		"update:dev": [
+			"composer update --ignore-platform-reqs --quiet"
+		],
+		"validate:quiet": [
+			"composer validate 1>/dev/null"
+		],
+		"docker-build": [
+			"composer clean",
+			"docker buildx build -f deployment/php-fpm.Dockerfile -t localhost/wordpress-test .",
+			"docker buildx build -f deployment/nginx.Dockerfile   -t localhost/nginx-test     ."
+		]
+	}
+}

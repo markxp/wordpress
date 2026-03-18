@@ -1,0 +1,10 @@
+{
+  "preset": "per",
+  "exclude": [
+    "web/wp",
+    "web/app/mu-plugins/bedrock-disallow-indexing",
+    "web/app/plugins",
+    "web/app/plugins/google-site-kit-dev-settings",
+    "web/app/themes/twentytwentyfour"
+  ]
+}
