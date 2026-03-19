@@ -110,8 +110,14 @@
 		],
 		"docker-build": [
 			"composer clean",
-			"docker buildx build -f deployment/php-fpm.Dockerfile -t localhost/wordpress-test .",
-			"docker buildx build -f deployment/nginx.Dockerfile   -t localhost/nginx-test     ."
+			"docker buildx build -f deployment/php-fpm.Dockerfile --target app -t localhost/wordpress-test .",
+			"docker buildx build -f deployment/nginx.Dockerfile                -t localhost/nginx-test     ."
+		],
+		"docker-compose:up": [
+			"docker compose -f deployment/docker-compose.yaml up --build || podman-compose -f deployment/docker-compose.yaml up --build"
+		],
+		"docker-compose:down": [
+			"docker compose -f deployment/docker-compose.yaml down || podman-compose -f deployment/docker-compose.yaml down"
 		]
 	}
 }
