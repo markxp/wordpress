@@ -1,0 +1,112 @@
+# ==============================================================================
+# OpenTelemetry Collector Configuration
+# Google-Built OTel Collector for Cloud Run
+# Image: us-docker.pkg.dev/cloud-ops-agents-artifacts/
+#        google-cloud-opentelemetry-collector/otelcol-google:0.144.0
+#
+# Optimized for Cloud Run request-based CPU throttling:
+# - Small batch sizes and short timeouts for low-latency flushing
+# - Percentage-based memory limits (adapts to any container limit)
+# - Lazy/short timeouts on resource detection
+# ==============================================================================
+
+receivers:
+  # Accepts OTLP from all sidecar containers on loopback only.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+
+processors:
+  # --- Memory Limiter -------------------------------------------------------
+  # Must be first in every pipeline. Drops data if memory is at risk.
+  # Percentage-based so it works regardless of actual container memory limit.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 65
+    spike_limit_percentage: 20
+
+  # --- Resource Detection ---------------------------------------------------
+  # Attaches Google Cloud resource labels (project_id, region, revision, etc.)
+  resourcedetection:
+    detectors: [gcp]
+    timeout: 10s
+    override: false
+
+  # --- Collision Avoidance --------------------------------------------------
+  # Renames metric attributes that collide with GCP reserved label keys.
+  transform/collision:
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["exported_location"],  attributes["location"])
+          - delete_key(attributes, "location")
+          - set(attributes["exported_cluster"],   attributes["cluster"])
+          - delete_key(attributes, "cluster")
+          - set(attributes["exported_namespace"], attributes["namespace"])
+          - delete_key(attributes, "namespace")
+          - set(attributes["exported_job"],       attributes["job"])
+          - delete_key(attributes, "job")
+          - set(attributes["exported_instance"],  attributes["instance"])
+          - delete_key(attributes, "instance")
+          - set(attributes["exported_project_id"], attributes["project_id"])
+          - delete_key(attributes, "project_id")
+
+  # --- Batch ----------------------------------------------------------------
+  # Cloud Run-tuned: short timeout (200ms) + small batches for throttled CPUs.
+  # Data is flushed when either size or timeout is reached first.
+  batch:
+    send_batch_size:     50
+    send_batch_max_size: 200
+    timeout:             200ms
+
+exporters:
+  # Sends logs + traces (and OTLP metrics) to Google Cloud:
+  #   - Cloud Logging   (logs)
+  #   - Cloud Trace     (traces)
+  #   - Cloud Monitoring via OTLP (metrics)
+  googlecloud:
+    log:
+      default_log_name: opentelemetry-collector
+
+extensions:
+  # Health-check endpoint required by Cloud Run startup/liveness probes.
+  # Cloud Run queries http://localhost:13133/ to determine sidecar readiness.
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+
+  pipelines:
+    # Logs -> Cloud Logging
+    logs:
+      receivers:   [otlp]
+      processors:  [memory_limiter, resourcedetection, batch]
+      exporters:   [googlecloud]
+
+    # Metrics -> Cloud Monitoring via OTLP (googlecloud exporter)
+    metrics/otlp:
+      receivers:   [otlp]
+      processors:  [memory_limiter, resourcedetection, transform/collision, batch]
+      exporters:   [googlecloud]
+
+    # Traces -> Cloud Trace
+    traces:
+      receivers:   [otlp]
+      processors:  [memory_limiter, resourcedetection, batch]
+      exporters:   [googlecloud]
+
+  # Self-observability: collector reports its own metrics into the OTLP receiver.
+  # This avoids opening an extra port and reuses the existing gRPC listener.
+  telemetry:
+    metrics:
+      readers:
+        - periodic:
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: http://localhost:4317
+                insecure: true

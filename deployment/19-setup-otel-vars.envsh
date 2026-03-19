@@ -1,0 +1,21 @@
+#!/bin/sh
+# This script prepares environment variables for Nginx configuration templates.
+# It is sourced by Nginx's entrypoint scripts (specifically any *.envsh file).
+#
+# Primary Purpose:
+# Handles the conditional logic for OpenTelemetry (OTel).
+#
+# Logic:
+# If NGINX_ENABLE_OTEL is "true" (default), it sets NGINX_OTEL_TOGGLE to an
+# empty string, which enables the OTel directives in the templates.
+# If "false", it sets NGINX_OTEL_TOGGLE to "# ", which comments out those
+# directives, effectively disabling the OTel module and configuration.
+
+if [ "$NGINX_ENABLE_OTEL" = "true" ]; then
+    export NGINX_OTEL_TOGGLE=""
+else
+    export NGINX_OTEL_TOGGLE="# "
+fi
+
+# Note: Default values for NGINX_PORT, NGINX_BACKEND_HOST, etc.,
+# are defined as ENV in the Dockerfile.

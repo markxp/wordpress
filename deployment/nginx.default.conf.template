@@ -1,0 +1,318 @@
+# ==============================================================================
+# Nginx Default Configuration Template for Bedrock WordPress
+# ==============================================================================
+# This template defines the HTTP server blocks and common settings.
+# It uses environment variables (e.g., ${NGINX_PORT}) for dynamic configuration.
+
+# ------- PHP-FPM Upstream Configuration -------
+upstream fpm_backend {
+    server ${NGINX_BACKEND_HOST};
+    # server unix:/var/run/php-fpm.sock; # Alternative: Unix socket
+    keepalive 16;
+}
+
+include fastcgi_params;
+
+# Patch for PHP `SCRIPT_FILENAME` - mandatory for FastCGI processing
+fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+
+# Mitigate https://httpoxy.org/ vulnerabilities
+proxy_set_header Proxy "";
+fastcgi_param HTTP_PROXY "";
+
+fastcgi_index index.php;
+fastcgi_keep_conn on;
+
+fastcgi_send_timeout  15s; # Allow for slow client uploads
+fastcgi_read_timeout  5s;  # Prevent hanging on slow PHP processes
+# ------- End PHP Upstream Setup -------
+
+
+# ------- Proxy and Forwarding Headers -------
+# helper functions to normalize client IP addresses
+map $remote_addr $proxy_forwarded_elem {
+    # IPv4 addresses can be sent as-is
+    ~^[0-9.]+$          "for=$remote_addr";
+
+    # IPv6 addresses need to be bracketed and quoted
+    ~^[0-9A-Fa-f:.]+$   "for=\"[$remote_addr]\"";
+
+    # Unix domain socket names cannot be represented in RFC 7239 syntax
+    default             "for=unknown";
+}
+
+# Standardized "Forwarded" header (RFC 7239)
+# Reference: https://github.com/nginxinc/nginx-wiki/blob/master/source/start/topics/examples/forwarded.rst
+map $http_forwarded $proxy_add_forwarded {
+    # If the incoming Forwarded header is syntactically valid, append to it
+    "~^(,[ \\t]*)*([!#$%&'*+.^_`|~0-9A-Za-z-]+=([!#$%&'*+.^_`|~0-9A-Za-z-]+|\"([\\t \\x21\\x23-\\x5B\\x5D-\\x7E\\x80-\\xFF]|\\\\[\\t \\x21-\\x7E\\x80-\\xFF])*\"))?(;([!#$%&'*+.^_`|~0-9A-Za-z-]+=([!#$%&'*+.^_`|~0-9A-Za-z-]+|\"([\\t \\x21\\x23-\\x5B\\x5D-\\x7E\\x80-\\xFF]|\\\\[\\t \\x21-\\x7E\\x80-\\xFF])*\"))?)*([ \\t]*,([ \\t]*([!#$%&'*+.^_`|~0-9A-Za-z-]+=([!#$%&'*+.^_`|~0-9A-Za-z-]+|\"([\\t \\x21\\x23-\\x5B\\x5D-\\x7E\\x80-\\xFF]|\\\\[\\t \\x21-\\x7E\\x80-\\xFF])*\"))?(;([!#$%&'*+.^_`|~0-9A-Za-z-]+=([!#$%&'*+.^_`|~0-9A-Za-z-]+|\"([\\t \\x21\\x23-\\x5B\\x5D-\\x7E\\x80-\\xFF]|\\\\[\\t \\x21-\\x7E\\x80-\\xFF])*\"))?)*)?)*$" "$http_forwarded, $proxy_forwarded_elem";
+
+    # Otherwise, replace it
+    default "$proxy_forwarded_elem";
+}
+
+# Backward-compatible "X-Forwarded-For" header
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+fastcgi_param HTTP_X_FORWARDED_FOR $proxy_add_x_forwarded_for;
+
+# Standard "Forwarded" header
+proxy_set_header Forwarded $proxy_add_forwarded;
+fastcgi_param HTTP_FORWARDED $proxy_add_forwarded;
+
+# X-Real-IP for log analysis and application use
+proxy_set_header X-Real-IP $realip_remote_addr;
+fastcgi_param HTTP_X_REAL_IP $realip_remote_addr;
+
+proxy_socket_keepalive on;
+# Preserve the original Host header (e.g. example.com) from the client request.
+# Critical for WordPress to generate correct links and handle multisite routing.
+proxy_set_header    Host $host;
+
+# Explicitly pass the hostname to PHP-FPM for application-level logic.
+# Often used in Bedrock distributions for canonical domain handling.
+fastcgi_param       X_HOST $host;
+
+# ------- End Proxy/Forwarding headers -------
+
+# ------- Security and Information Hiding -------
+server_tokens off;
+proxy_hide_header   X-Powered-By;
+fastcgi_hide_header X-Powered-By;
+
+# File cache for performance
+open_file_cache         max=1000;
+open_file_cache_valid   300s;
+# ------- End Security section -------
+
+
+# ------- Compression (Gzip) Settings -------
+
+gzip            on;
+gzip_comp_level 5;
+gzip_vary       on;
+gunzip          on;
+## gzip_types always contains `text/html`, no need to add it here.
+gzip_types 
+    text/plain 
+    text/css 
+
+    text/javascript 
+    text/xml 
+    application/xml 
+    application/json 
+    application/ld+json 
+    application/atom+xml 
+    application/rss+xml 
+    image/svg+xml 
+    application/vnd.ms-fontobject 
+    font/ttf 
+    font/otf 
+    image/vnd.microsoft.icon;
+# ------- End Gzip section -------
+
+
+# ------- OpenTelemetry Configuration -------
+${NGINX_OTEL_TOGGLE}otel_exporter {
+${NGINX_OTEL_TOGGLE}    endpoint ${NGINX_OTEL_ENDPOINT};
+${NGINX_OTEL_TOGGLE}}
+
+${NGINX_OTEL_TOGGLE}otel_trace          on;
+${NGINX_OTEL_TOGGLE}otel_service_name   "${NGINX_OTEL_SERVICE_NAME}";
+${NGINX_OTEL_TOGGLE}otel_span_name      nginx;
+# ------- End OTel configuration -------
+
+
+# ------- Real IP Module (Trusted Proxies) -------
+set_real_ip_from    169.254.0.0/16;
+real_ip_header      X-Forwarded-For;
+real_ip_recursive   on;
+# ------- End Real IP section -------
+
+
+# ==============================================================================
+# SERVER BLOCKS
+# ==============================================================================
+
+# 1. Local/Internal Server (Cron, Self-Trigger)
+# ------------------------------------------------------------------------------
+server {
+    listen      ${NGINX_PORT};
+    listen      [::]:${NGINX_PORT};
+    server_name localhost 127.0.0.1;
+
+    root    /var/www/html/web;
+    index   index.php index.htm index.html;
+
+    # Restricted access
+    allow   127.0.0.1;
+    allow   ::1;
+    # allow   all; # For local debugging/verification
+    deny    all;
+
+
+    # Local requests don't need heavy file caching
+    open_file_cache off;
+    
+    # Security: No PHP execution in uploads
+    location ~ ^/app/uploads/.*\.php$ {
+        return 401;
+    }
+
+    # Security: No access to .htaccess
+    location ~ /\.ht[^/]*$ {
+        return 404;
+    }
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        if (!-f $document_root$fastcgi_script_name) {
+            return 404;
+        }
+        set $proxy_forwarded_elem $http_forwarded;
+        fastcgi_pass fpm_backend;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+}
+
+# 2. Administrative Area Server (*.run.app)
+# ------------------------------------------------------------------------------
+server {
+    listen      ${NGINX_PORT};
+    listen      [::]:${NGINX_PORT};
+    server_name *.run.app;
+
+    root    /var/www/html/web;
+    index   index.php index.htm index.html;
+
+    # Security: No PHP execution in uploads
+    location ~ ^/app/uploads/.*\.php$ {
+        return 401;
+    }
+
+    # Security: No access to .htaccess
+    location ~ /\.ht[^/]*$ {
+        return 404;
+    }
+
+    # Security: Deny hidden files (.gitignore, .env, etc.)
+    location ~ /\..+$ {
+        return 401;
+    }
+
+    # SEO: Robots.txt
+    location ~ ^\/robots\.txt$ {
+        # TODO: provide an alternative robots.txt to deny all crawlers for this domain.
+        # try_files /DENY_ALL_BOTS.txt =404;
+    }
+
+    location ~ ^\/wp-sitemap[^\/]*\.xml$ {
+        try_files $uri /index.php?$args;
+    }
+
+    location = /ads.txt {
+        return 404;
+    }
+
+    # Security: Deny common config/doc extensions
+    location ~ \.(md|txt|csv|json|yaml|yml|toml|conf|xml)$ {
+        return 404;
+    }
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        if (!-f $document_root$fastcgi_script_name) {
+            return 404;
+        }
+        set $proxy_forwarded_elem $http_forwarded;
+        fastcgi_pass fpm_backend;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+}
+
+# 3. Default Public Server (Fallback)
+# ------------------------------------------------------------------------------
+server {
+    listen      ${NGINX_PORT} default_server;
+    listen      [::]:${NGINX_PORT};
+    server_name _;
+
+    root    /var/www/html/web;
+    index   index.php index.htm index.html;
+
+    # Security: No PHP execution in uploads
+    location ~ ^/app/uploads/.*.php$ {
+        return 401;
+    }
+
+    location ~ /\.ht[^/]*$ {
+        return 404;
+    }
+
+    location ~ /\..+$ {
+        return 401;
+    }
+
+    location ~ ^\/robots\.txt$ {
+        try_files $uri /index.php?$args;
+    }
+
+    location ~ ^\/wp-sitemap[^\/]*\.xml$ {
+        try_files $uri /index.php?$args;
+    }
+
+    location ~ ^/ads.txt$ {
+        return 404;
+    }
+
+    location ~ \.(md|txt|csv|json|yaml|yml|toml|conf|xml)$ {
+        return 404;
+    }
+
+    # 4. Deny access to /wp-admin
+    # TODO: find a better configuration.
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        if (!-f $document_root$fastcgi_script_name) {
+            return 404;
+        }
+        set $proxy_forwarded_elem $http_forwarded;
+        fastcgi_pass fpm_backend;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+}
+
+# 4. Health Check Server
+# ------------------------------------------------------------------------------
+server {
+    listen      ${NGINX_HEALTH_PORT};
+    listen      [::]:${NGINX_HEALTH_PORT};
+
+    # Disable OTel and logging for health checks
+    ${NGINX_OTEL_TOGGLE}otel_trace off;
+    access_log off;
+    error_log off;
+
+    location = /nginx_status {
+        stub_status on;
+        allow   127.0.0.1;
+        allow   169.254.0.0/16;
+        allow   all; # For local debugging/verification from host
+        deny    all;
+
+    }
+
+    location / {
+        root    /dev/null;
+        return  404;
+    }
+}
