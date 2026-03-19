@@ -1,0 +1,171 @@
+# ==============================================================================
+# Docker Compose – WordPress Single-Pod (4-container) Stack
+# ==============================================================================
+# All containers share the nginx network namespace (network_mode: service:nginx)
+# so they communicate over localhost, mirroring the Cloud Run sidecar model.
+#
+# Image names match `composer docker-build`:
+#   nginx      → localhost/nginx-test
+#   wordpress  → localhost/wordpress-test
+#
+# Usage:
+#   composer docker-compose:up
+#   composer docker-compose:down
+#
+# Required environment (copy .env.example → .env and fill in values):
+#   CLOUD_SQL_INSTANCE  – e.g. my-project:us-central1:my-instance
+#   DB_NAME, DB_USER, DB_PASSWORD, DB_HOST (for WordPress)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # nginx – HTTP traffic + static file serving
+  # Listens on :8080 (main) and :8081 (health/status)
+  # ----------------------------------------------------------------------------
+  nginx:
+    # Set explicit container_name for podman-compose 1.0.3 compatibility with network_mode: container:nginx
+    container_name: nginx
+    image: localhost/nginx-test:latest
+    build:
+      # Use project root as context for consistency with composer docker-build
+      context: ..
+      # Path relative to context (project root)
+      dockerfile: deployment/nginx.Dockerfile
+    ports:
+      - "${NGINX_PORT:-8080}:8080"
+      - "${NGINX_HEALTH_PORT:-8081}:8081"
+    volumes:
+      - run-data:/var/run
+    environment:
+      NGINX_PORT: 8080
+      NGINX_HEALTH_PORT: 8081
+      NGINX_BACKEND_HOST: "127.0.0.1:9000"
+      NGINX_ENABLE_OTEL: "${NGINX_ENABLE_OTEL:-true}"
+      NGINX_OTEL_ENDPOINT: "127.0.0.1:4317"
+      NGINX_OTEL_SERVICE_NAME: "${NGINX_OTEL_SERVICE_NAME:-wordpress}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/nginx_status"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # wordpress – PHP-FPM application (Bedrock WordPress)
+  # Shares nginx's network namespace so it can reach nginx on localhost.
+  # Communicates with nginx via TCP 127.0.0.1:9000.
+  # FPM status : 127.0.0.1:9001
+  # Health API  : 127.0.0.1:8082  (health-server sidecar)
+  # ----------------------------------------------------------------------------
+  wordpress:
+    image: localhost/wordpress-test:latest
+    build:
+      # Use project root as context for consistency with composer docker-build
+      context: ..LICENSE
+      # Path relative to context (project root)
+      dockerfile: deployment/php-fpm.Dockerfile
+      target: app
+    # WORKAROUND: network_mode: "service:nginx" is broken in podman-compose 1.0.3
+    # Using "container:nginx" with explicit container_name instead.
+    # This remains compatible with docker-compose for single-instance stacks.
+    network_mode: "container:nginx"
+    volumes:
+      - run-data:/var/run
+      # Mount dotfiles directory so the entrypoint can find/symlink .env
+      - ./dotfiles:/var/www/html/dotfiles
+      # Cloud SQL unix socket directory (shared with cloud-sql-proxy)
+      - cloudsql-sockets:/cloudsql
+    environment:
+      # PHP runtime tunables
+      MEM_LIMIT: "${MEM_LIMIT:-256M}"
+      POST_MAX_SIZE: "${POST_MAX_SIZE:-64M}"
+      UPLOAD_MAX_FILE_SIZE: "${UPLOAD_MAX_FILE_SIZE:-64M}"
+      MAX_INPUT_TIME: "${MAX_INPUT_TIME:-30}"
+      MAX_EXECUTION_TIME: "${MAX_EXECUTION_TIME:-30}"
+      MAX_FILE_UPLOADS: "${MAX_FILE_UPLOADS:-20}"
+      # PHP-FPM pool
+      PM: "${PM:-static}"
+      PM_MAX_CHILDREN: "${PM_MAX_CHILDREN:-5}"
+      REQUEST_TERMINATE_TIMEOUT: "${REQUEST_TERMINATE_TIMEOUT:-35s}"
+      PM_STATUS_LISTEN: "9001"
+      # Development toggle
+      DEV_ON: "${DEV_ON:-false}"
+      # Cloud SQL socket path (set DB_HOST in .env to /cloudsql/PROJECT:REGION:INSTANCE)
+      DB_HOST: "${DB_HOST:-/cloudsql/${CLOUD_SQL_INSTANCE:-fake-project:fake-region:fake-instance}}"
+      # OpenTelemetry (PHP SDK reads these standard env vars)
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:4317"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-wordpress}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      nginx:
+        condition: service_started
+      otel-collector:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # cloud-sql-proxy – Secure MySQL tunnel for Cloud SQL (IAM auth, Unix socket)
+  # --enable-iam-login : uses the Cloud Run service-account identity as DB user
+  # --lazy-refresh     : defers IAM token refresh until first connection
+  # --unix-socket      : creates socket files at /cloudsql/PROJECT:REGION:INSTANCE
+  # Health check       : built-in HTTP server (--http-address/--http-port)
+  # CLOUD_SQL_INSTANCE must be set in .env (format: project:region:instance)
+  # ----------------------------------------------------------------------------
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    # WORKAROUND: network_mode: "service:nginx" is broken in podman-compose 1.0.3
+    network_mode: "container:nginx"
+    volumes:
+      - cloudsql-sockets:/cloudsql
+    environment:
+      CSQL_PROXY_AUTO_IAM_AUTHN: "true"
+      CSQL_PROXY_LAZY_REFRESH: "true"
+      CSQL_PROXY_MAX_CONNECTIONS: "5"
+      CSQL_PROXY_UNIX_SOCKET: "/cloudsql"
+      CSQL_PROXY_HTTP_ADDRESS: "0.0.0.0"
+      CSQL_PROXY_HTTP_PORT: "9090"
+      CSQL_PROXY_INSTANCE_CONNECTION_NAME_0: "${CLOUD_SQL_INSTANCE:-fake-project:fake-region:fake-instance}"
+    healthcheck:
+      # cloud-sql-proxy v2 built-in HTTP health check
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9090/readiness"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      nginx:
+        condition: service_started
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # otel-collector – OpenTelemetry sidecar (Google-built image)
+  # Health check extension exposes http://:13133/ for readiness probes.
+  # Config is file-mounted for local dev; in Cloud Run it comes from Secret Mgr.
+  # ----------------------------------------------------------------------------
+  otel-collector:
+    image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.144.0
+    # WORKAROUND: network_mode: "service:nginx" is broken in podman-compose 1.0.3
+    network_mode: "container:nginx"
+    volumes:
+      - ./otel-config.yaml:/etc/otelcol-google/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:13133/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      nginx:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  run-data:
+  # Shared directory for Cloud SQL Unix socket files
+  cloudsql-sockets:
