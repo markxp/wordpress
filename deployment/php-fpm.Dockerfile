@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM scratch as install-php-extension-cache
 COPY --from=downloader /install-php-extensions /
 
-FROM mirror.gcr.io/library/php:8.4-fpm as php-fpm
+FROM mirror.gcr.io/library/php:8.5-fpm as php-fpm
 # Copy mlocati's installer from downloader stage
 COPY --from=install-php-extension-cache --chmod=754 /install-php-extensions /usr/local/bin/
 
