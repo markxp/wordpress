@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Maintain dependencies for Composer
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Maintain dependencies for Docker
+  - package-ecosystem: "docker"
+    directory: "/deployment"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(docker)"
