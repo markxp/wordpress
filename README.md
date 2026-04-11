@@ -30,9 +30,9 @@ By following this apporoach, it is good to set debug settings in `config/environ
 
 WordPress settings
 
-* WP_ENV
-* WP_HOME
-* WP_SITEURL
+* `WP_ENV` (canonical name: `WP_ENVIRONMENT_TYPE`, but bedrock use `WP_ENV`)
+* `WP_HOME`
+* `WP_SITEURL` (in bedrock, default to `${WP_HOME}/wp`)
 
 `WP_HOME` is a required variable in bedrock. While `WP_SITEURL` is derived from `${WP_HOME}/wp`, it is also required by WordPress.
 
@@ -43,7 +43,7 @@ WordPress settings
 * staging
 * production
 
-but `WP_ENV` does not have a standard.
+but `WP_ENV` does not have a WordPress standard, while `WP_ENVIRONMENT_TYPE` is. In bedrock, [`WP_ENVIRONMENT_TYPE` is inferred from `WP_ENV`](https://roots.io/bedrock/docs/environment-variables/#wp_environment_type).
 
 ---
 database settings
@@ -74,10 +74,6 @@ generate by [root's generater](https://roots.io/salts.html) or `wp salt generate
 ---
 
 ### optional environment variables
-
-WordPress settings
-
-* WP_ENVIRONMENT_TYPE (default: production) It controls which file in `config/environments` will be loaded.
 
 ---
 debug settings
