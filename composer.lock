@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6be80197fb77091364d4a9c090665bbd",
+    "content-hash": "0b2c22d53cdf6326e7e71afa1197d72d",
     "packages": [
         {
             "name": "brick/math",
@@ -1410,16 +1410,16 @@
         },
         {
             "name": "open-telemetry/opentelemetry-auto-wordpress",
-            "version": "0.1.1",
+            "version": "0.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/opentelemetry-php/contrib-auto-wordpress.git",
-                "reference": "a8d668b711f5d53e940fb97e6ffdb898dcbed46a"
+                "reference": "5ce3a9a7d8a1ded0eb35e4bdcceb97d8b48369f6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/opentelemetry-php/contrib-auto-wordpress/zipball/a8d668b711f5d53e940fb97e6ffdb898dcbed46a",
-                "reference": "a8d668b711f5d53e940fb97e6ffdb898dcbed46a",
+                "url": "https://api.github.com/repos/opentelemetry-php/contrib-auto-wordpress/zipball/5ce3a9a7d8a1ded0eb35e4bdcceb97d8b48369f6",
+                "reference": "5ce3a9a7d8a1ded0eb35e4bdcceb97d8b48369f6",
                 "shasum": ""
             },
             "require": {
@@ -1455,7 +1455,7 @@
                 "Apache-2.0"
             ],
             "description": "OpenTelemetry auto-instrumentation for Wordpress",
-            "homepage": "https://opentelemetry.io/docs/php",
+            "homepage": "https://opentelemetry.io/docs/languages/php/",
             "keywords": [
                 "instrumentation",
                 "open-telemetry",
@@ -1465,9 +1465,9 @@
                 "wordpress"
             ],
             "support": {
-                "source": "https://github.com/opentelemetry-php/contrib-auto-wordpress/tree/0.1.1"
+                "source": "https://github.com/opentelemetry-php/contrib-auto-wordpress/tree/0.2.0"
             },
-            "time": "2025-07-31T13:13:26+00:00"
+            "time": "2026-03-24T16:33:16+00:00"
         },
         {
             "name": "open-telemetry/sdk",

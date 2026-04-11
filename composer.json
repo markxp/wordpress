@@ -51,7 +51,7 @@
         "koodimonni-language/core-zh_tw": "^6.9",
         "open-telemetry/opentelemetry": "^1.0",
         "open-telemetry/exporter-otlp": "^1.4",
-        "open-telemetry/opentelemetry-auto-wordpress": "^0.1.1",
+        "open-telemetry/opentelemetry-auto-wordpress": "^0.2.0",
         "php-http/guzzle7-adapter": "^1.1",
         "open-telemetry/transport-grpc": "^1.1",
         "firebase/php-jwt": "^7.0"
