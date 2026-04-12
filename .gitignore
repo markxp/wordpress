@@ -22,9 +22,9 @@ web/.htaccess
 *.log
 
 # Dotenv`
-!.env.example
 .env.*
 .env
+!.env.example
 
 # Composer
 vendor
