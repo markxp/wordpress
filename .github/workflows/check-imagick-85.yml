@@ -1,0 +1,37 @@
+name: Check Imagick on PHP 8.5
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Run every Monday at 00:00
+  workflow_dispatch: # Allow manual trigger via UI
+  push:
+    paths:
+      - '.github/workflows/check-imagick-85.yml'
+
+jobs:
+  test-imagick:
+    name: Test Imagick 3.8.1 on PHP 8.5
+    runs-on: ubuntu-latest
+    container:
+      image: php:8.5-fpm
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y libmagickwand-dev
+      
+      - name: Build and test Imagick 3.8.1
+        run: |
+          pecl download imagick-3.8.1
+          tar xzf imagick-3.8.1.tgz
+          cd imagick-3.8.1
+          phpize
+          ./configure
+          make
+          NO_INTERACTION=1 make test
+          make install
+          docker-php-ext-enable imagick
+      
+      - name: Verify Imagick loaded
+        run: php -m | grep imagick
