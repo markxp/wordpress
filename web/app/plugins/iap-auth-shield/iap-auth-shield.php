@@ -41,8 +41,9 @@ class IAP_Auth_Shield {
         $this->audience = getenv('IAP_AUDIENCE');
         
         if (!$this->audience) {
-            error_log('IAP Auth Error: IAP_AUDIENCE environment variable not found.');
-            return; // Skip further actions if Audience is missing to avoid security misjudgment
+            error_log('IAP Auth Configuration Error: IAP_AUDIENCE environment variable not found.');
+            // Intentionally not throwing an exception here so the frontend remains unaffected.
+            // We register the hooks and fail-closed inside the authentication handler instead.
         }
 
         // Hook 1: Handle identity verification and auto-login (init stage)
@@ -61,6 +62,10 @@ class IAP_Auth_Shield {
             return;
         }
 
+        if (!$this->audience) {
+            wp_die('IAP Auth Configuration Error: IAP_AUDIENCE is missing. Backend access is disabled for security.', 'Configuration Error', ['response' => 500]);
+        }
+
         $jwt = $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] ?? null;
 
         // 如果連線到 wp-admin 但沒有 JWT (可能是繞過 LB 直接打 IP)，直接阻擋
@@ -68,10 +73,14 @@ class IAP_Auth_Shield {
             wp_die('Access Denied: Missing IAP credentials. Please access through the correct domain.', 'Unauthorized', ['response' => 401]);
         }
 
-        $payload = $this->verify_jwt($jwt);
+        try {
+            $payload = $this->verify_jwt($jwt);
+        } catch (\Exception $e) {
+            wp_die('IAP Verification Failed: ' . $e->getMessage(), 'Forbidden', ['response' => 403]);
+        }
 
         if (!$payload || empty($payload['email'])) {
-            wp_die('IAP Verification Failed: Invalid or expired credentials.', 'Forbidden', ['response' => 403]);
+            wp_die('IAP Verification Failed: Payload empty or missing email.', 'Forbidden', ['response' => 403]);
         }
 
         $email = $payload['email'];
@@ -148,8 +157,7 @@ class IAP_Auth_Shield {
         if (false === $keys) {
             $response = wp_remote_get('https://www.gstatic.com/iap/verify/public_key');
             if (is_wp_error($response)) {
-                error_log('IAP Auth Error: Unable to fetch Google public keys - ' . $response->get_error_message());
-                return false;
+                throw new \Exception('Unable to fetch Google public keys - ' . $response->get_error_message());
             }
             $body = wp_remote_retrieve_body($response);
             $keys = json_decode($body, true);
@@ -162,12 +170,13 @@ class IAP_Auth_Shield {
 
     private function verify_jwt($jwt) {
         if (!class_exists('Firebase\JWT\JWT')) {
-            error_log('IAP Auth Error: Firebase\JWT\JWT class not found.');
-            return false;
+            throw new \Exception('Firebase\JWT\JWT class not found. Ensure Composer dependencies are installed.');
         }
 
         $public_keys = $this->get_google_iap_keys();
-        if (!$public_keys) return false;
+        if (!$public_keys) {
+            throw new \Exception('Public keys could not be loaded.');
+        }
 
         $key_objects = [];
         foreach ($public_keys as $kid => $pem) {
@@ -176,23 +185,19 @@ class IAP_Auth_Shield {
 
         try {
             $decoded = JWT::decode($jwt, $key_objects);
-
-            if ($decoded->iss !== 'https://cloud.google.com/iap') {
-                error_log('IAP Auth Error: Invalid issuer -> ' . $decoded->iss);
-                return false;
-            }
-
-            if ($decoded->aud !== $this->audience) {
-                error_log('IAP Auth Error: Invalid audience. Expected: ' . $this->audience . ' but got: ' . $decoded->aud);
-                return false;
-            }
-
-            return (array) $decoded;
-
         } catch (\Exception $e) {
-            error_log('IAP Auth Error: JWT verification failed -> ' . $e->getMessage());
-            return false;
+            throw new \Exception('JWT verification failed -> ' . $e->getMessage());
         }
+
+        if ($decoded->iss !== 'https://cloud.google.com/iap') {
+            throw new \Exception('Invalid issuer -> ' . $decoded->iss);
+        }
+
+        if ($decoded->aud !== $this->audience) {
+            throw new \Exception('Invalid audience. Expected: ' . $this->audience . ' but got: ' . $decoded->aud);
+        }
+
+        return (array) $decoded;
     }
 }
 
