@@ -183,7 +183,7 @@ class IAP_Auth_Shield {
             }
 
             if ($decoded->aud !== $this->audience) {
-                error_log('IAP Auth Error: Invalid audience. Expected: ' . $this->audience);
+                error_log('IAP Auth Error: Invalid audience. Expected: ' . $this->audience . ' but got: ' . $decoded->aud);
                 return false;
             }
 
