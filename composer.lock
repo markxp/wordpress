@@ -3764,15 +3764,15 @@
         },
         {
             "name": "wp-plugin/google-site-kit",
-            "version": "1.176.0",
+            "version": "1.177.0",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/google-site-kit/",
-                "reference": "tags/1.176.0"
+                "reference": "tags/1.177.0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/google-site-kit.1.176.0.zip"
+                "url": "https://downloads.wordpress.org/plugin/google-site-kit.1.177.0.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
@@ -3791,7 +3791,7 @@
                 "issues": "https://wordpress.org/support/plugin/google-site-kit",
                 "source": "https://plugins.svn.wordpress.org/google-site-kit"
             },
-            "time": "2026-04-06T18:50:47+00:00"
+            "time": "2026-04-21T18:26:20+00:00"
         },
         {
             "name": "wp-plugin/wp-stateless",
