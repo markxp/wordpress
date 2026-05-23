@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0b2c22d53cdf6326e7e71afa1197d72d",
+    "content-hash": "e81b39b4689558f2840c72b0719d0281",
     "packages": [
         {
             "name": "brick/math",
@@ -831,10 +831,10 @@
         },
         {
             "name": "koodimonni-language/core-zh_tw",
-            "version": "6.9.4",
+            "version": "7.0",
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/translation/core/6.9.4/zh_TW.zip"
+                "url": "https://downloads.wordpress.org/translation/core/7.0/zh_TW.zip"
             },
             "require": {
                 "koodimonni/composer-dropin-installer": ">=0.2.3"
