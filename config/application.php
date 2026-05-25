@@ -60,11 +60,17 @@ if (!env('WP_ENVIRONMENT_TYPE') && in_array(WP_ENV, ['production', 'staging', 'd
     Config::define('WP_ENVIRONMENT_TYPE', WP_ENV);
 }
 
-/**
- * URLs
- */
-Config::define('WP_HOME', env('WP_HOME'));
-Config::define('WP_SITEURL', env('WP_SITEURL'));
+if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+    $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+}
+
+if (isset($_SERVER['HTTP_HOST'])) {
+    $http_host = $_SERVER['HTTP_HOST'];
+    $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+    $dynamic_home = "{$protocol}://{$http_host}";
+    Config::define('WP_HOME', $dynamic_home);
+    Config::define('WP_SITEURL', "{$dynamic_home}/wp");
+}
 
 /**
  * Custom Content Directory
