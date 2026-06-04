@@ -1,8 +1,9 @@
 === GCP IAP Auth & API Shield (Stateless) ===
 Contributors: markxp
 Tags: security, iap, gcp, authentication, firewall
-Requires at least: 5.0
-Tested up to: 6.5
+Requires at least: 6.8
+Requires PHP: 8.3
+Tested up to: 6.9
 Stable tag: 1.1.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
