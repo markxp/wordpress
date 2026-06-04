@@ -1,27 +1,25 @@
 ---
 trigger: model_decision
-description: This emphisis our wordpress build (with php, without system packages)
+description: Specifies rules and preferences for our Bedrock-based WordPress project structure, package choices, security, and observability.
 ---
 
-* Principle of rules
+## Core Principles
 
-We emphasis on application reusability. This repository should include all wordpress-related pacakges and scripts.
+- **Application Reusability**: We focus heavily on application reusability. This repository must contain all WordPress-related custom packages, plugins, and scripts necessary for the site layout and logic.
+- **Runtime Target**: The system runtime targets the last two major PHP versions, supporting both Alpine and Debian-based execution environments.
+- **Credential Security**: All sensitive configurations—including cloud credentials, WordPress keys/salts, and database connection secrets—must **never** be committed to version control. Use environment variables.
+- **Deployment Isolation**: Actual production deployment configurations must be kept completely separate from this repository. Any deployment configuration files stored here should be strictly for local development or testing environments.
 
-The runtime of system should involve the latest 2 PHP version, and both alpine, debian flavor.
-All sensitive data, such as cloud resource's credential, wordpress's credential, database connection credential should NOT be added into version control system.
+## WordPress Core Structure
 
-The deployment configuration will be seperated from this repository. The only possible deployment configuration in this repository should be for testing purpose, and NOT involved in any real outward system.
+- **Bedrock Integration**: We use [Bedrock](https://roots.io/bedrock/) to manage WordPress. This enforces a modern, clean directory structure, separates the web root, and allows version locking of WordPress core via Composer.
 
-* WordPress core
+## Package & Plugin Selection
 
-we are using "<https://roots.io/bedrock/>", which is a modernized, packaged, and nicer structured than original WordPress. This enables us to reproduce and control WordPress core version with PHP's package control system easily.
+- **Simplicity First**: Keep the dependency footprint as minimal as possible.
+- **Dependency Management**: All external PHP libraries, themes, and plugins must be installed and managed programmatically using Composer.
+- **Third-Party Packages**: When selecting third-party plugins or packages (aside from our custom-written plugins), prioritize public, free-to-use options with strong active maintenance from established organizations or companies.
 
-* WordPress Package Chooses
+## Observability
 
-The more simple, the better. Except our own self-written pacakge, we should only choose public, free to use, and built by company or organization to keep the support is avaiable.
-
-We should control all PHP packages through PHP package installer (composer).
-
-* WordPress observability
-
-We must keep our system observable. The approach of tracing, metrics, and logging is by importing OpenTelemetry support. This is important in PHP and WordPress.
+- **OpenTelemetry (OTEL)**: The application must be highly observable. Implement tracing, metrics, and logging through OpenTelemetry integrations designed for PHP and WordPress.
