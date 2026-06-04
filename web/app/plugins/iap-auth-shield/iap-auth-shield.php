@@ -3,7 +3,9 @@
  * Plugin Name: GCP IAP Auth & API Shield (Stateless)
  * Description: IAP authentication and REST API firewall controlled by system environment variables, protecting the backend while keeping the frontend open.
  * Version: 1.1.0
- * Author: Your Name
+ * Author: Cheng Bo Yan
+ * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
  */
 
 if (!defined('ABSPATH')) exit;

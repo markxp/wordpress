@@ -8,9 +8,9 @@ A WordPress plugin to provide identity-aware authentication and a REST API firew
 - **Auto-Login**: Gracefully logs in recognized employees and redirects them to the admin dashboard.
 - **REST API Firewall**:
   - Protects sensitive API endpoints.
-  - Whitelists common read-only endpoints (Posts, Pages, etc.) for external visitors.
-  - Special bypass for comments to allow external POST requests.
-- **Stateless Configuration**: Controlled entirely via environment variables.
+  - Whitelists common read-only endpoints (Posts, Pages, Categories, Tags, Media, Taxonomies, Types) for external visitors.
+  - Special bypass for comments to allow external POST/GET requests.
+- **Stateless Configuration**: Controlled entirely via system environment variables.
 
 ## Configuration
 
@@ -25,3 +25,7 @@ The plugin uses the following environment variables:
 2. Ensure you have the `firebase/php-jwt` library installed via Composer or available in the `vendor` folder.
 3. Configure the required environment variables.
 4. Activate the plugin in the WordPress admin panel.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

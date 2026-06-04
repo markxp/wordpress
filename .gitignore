@@ -3,6 +3,7 @@ web/app/plugins/*
 !web/app/plugins/.gitkeep
 !web/app/plugins/google-site-kit-dev-settings/
 !web/app/plugins/iap-auth-shield/
+!web/app/plugins/remove-wp-default-link-header/
 web/app/uploads/*
 !web/app/uploads/.gitkeep
 web/app/mu-plugins/*
