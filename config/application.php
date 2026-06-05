@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Your base production configuration goes in this file. Environment-specific
  * overrides go in their respective config/environments/{{WP_ENV}}.php file.
@@ -9,6 +10,7 @@
  */
 
 use Roots\WPConfig\Config;
+
 use function Env\env;
 
 // USE_ENV_ARRAY + CONVERT_* + STRIP_QUOTES
@@ -121,11 +123,20 @@ Config::define('NONCE_SALT', env('NONCE_SALT'));
 Config::define('AUTOMATIC_UPDATER_DISABLED', true);
 Config::define('DISABLE_WP_CRON', env('DISABLE_WP_CRON') ?: false);
 
+// Block direct HTTP requests to wp-cron.php on the reader service in production
+if (isset($_SERVER['SCRIPT_FILENAME']) && basename($_SERVER['SCRIPT_FILENAME']) === 'wp-cron.php') {
+    $is_reader_service = env('WORDPRESS_SERVICE_ROLE') === 'reader' || (WP_ENV === 'production' && !env('IAP_AUTH_ENABLED'));
+    if ($is_reader_service) {
+        header('HTTP/1.1 404 Not Found');
+        exit;
+    }
+}
+
 // Disable the plugin and theme file editor in the admin
 Config::define('DISALLOW_FILE_EDIT', true);
 
 // Disable plugin and theme updates and installation from the admin
-Config::define('DISALLOW_FILE_MODS', env('DISALLOW_FILE_MODS')?? true);
+Config::define('DISALLOW_FILE_MODS', env('DISALLOW_FILE_MODS') ?? true);
 
 // Limit the number of post revisions
 Config::define('WP_POST_REVISIONS', env('WP_POST_REVISIONS') ?? 3);
