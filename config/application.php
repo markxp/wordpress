@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Your base production configuration goes in this file. Environment-specific
  * overrides go in their respective config/environments/{{WP_ENV}}.php file.
@@ -9,6 +10,7 @@
  */
 
 use Roots\WPConfig\Config;
+
 use function Env\env;
 
 // USE_ENV_ARRAY + CONVERT_* + STRIP_QUOTES
@@ -125,7 +127,7 @@ Config::define('DISABLE_WP_CRON', env('DISABLE_WP_CRON') ?: false);
 Config::define('DISALLOW_FILE_EDIT', true);
 
 // Disable plugin and theme updates and installation from the admin
-Config::define('DISALLOW_FILE_MODS', env('DISALLOW_FILE_MODS')?? true);
+Config::define('DISALLOW_FILE_MODS', env('DISALLOW_FILE_MODS') ?? true);
 
 // Limit the number of post revisions
 Config::define('WP_POST_REVISIONS', env('WP_POST_REVISIONS') ?? 3);
