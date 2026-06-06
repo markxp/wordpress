@@ -93,39 +93,9 @@ others
 
 * [DISABLE_WP_CRON](https://roots.io/bedrock/docs/wp-cron/)=true
 * WP_POST_REVISIONS It limits the number of revisions of posts.
-* `WORDPRESS_SERVICE_ROLE` Configures the current service role. Can be either `editor` or `reader` (defaults to `editor`).
 
 Open Telemetry
 
 * OTEL_SERVICE_NAME
 * OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 * OTEL_EXPORTER_OTLP_ENDPOINT (default: <http://localhost:4317>)
-
----
-
-## Deployment Strategy & Service Roles
-
-Our deployment strategy divides the WordPress stack into two distinct, isolated service roles to optimize performance, security, and task scheduling:
-
-1. **Editor Service (`WORDPRESS_SERVICE_ROLE=editor`)**:
-   - Dedicated backend service for administrators, editors, and content creators.
-   - Protected by GCP Identity-Aware Proxy (IAP) (`IAP_AUTH_ENABLED=true`) to enforce strict authentication.
-   - The **only** service meant to react to and trigger WordPress cron jobs.
-
-2. **Reader Service (`WORDPRESS_SERVICE_ROLE=reader`)**:
-   - Public-facing frontend service that serves content to visitors.
-   - Accessible publicly without IAP authentication.
-   - Utilizes a REST API firewall to restrict access to sensitive endpoints.
-   - **Cron Access Blocked**: Direct HTTP requests to `wp-cron.php` are blocked (returning `404 Not Found`) to prevent public clients from hitting the path to trigger cron tasks, avoiding server resource exhaustion and maintaining fast reader response times.
-
----
-
-## Changelog
-
-### [2.0.0] - 2026-06-05
-
-#### Added
-- Implemented a production-only `wp-cron.php` HTTP access blocker in `config/application.php` for the `reader` service role.
-
-#### Breaking Changes
-- **WP-Cron Access Restrictions**: Direct HTTP access to `wp-cron.php` is now blocked (returning `404 Not Found`) on the `reader` service in production. This enforces the deployment strategy where only the `editor` service handles cron execution. Any external HTTP calls attempting to trigger `wp-cron.php` on the `reader` service will fail with a `404`. Cron execution should be managed via WP-CLI on the `editor` service or through system cron.
