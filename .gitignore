@@ -5,6 +5,7 @@ web/app/plugins/*
 !web/app/plugins/iap-auth-shield/
 !web/app/plugins/remove-wp-default-link-header/
 !web/app/plugins/http-link-header-generator/
+!web/app/plugins/security-hardening/
 web/app/uploads/*
 !web/app/uploads/.gitkeep
 web/app/mu-plugins/*
