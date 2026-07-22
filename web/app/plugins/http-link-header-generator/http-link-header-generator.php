@@ -18,9 +18,9 @@ if (!defined('ABSPATH')) {
 }
 
 // 1. Include the Abstract Base Class (Core engine)
-require_once __DIR__ . '/includes/class-base.php';
+require_once __DIR__ . '/src/class-base.php';
 
 // 2. Include the Main Plugin Class (Admin settings and initialization)
-require_once __DIR__ . '/includes/class-http-link-header-generator.php';
+require_once __DIR__ . '/src/class-http-link-header-generator.php';
 
 new \HTTP_Link_Header_Generator\Plugin();

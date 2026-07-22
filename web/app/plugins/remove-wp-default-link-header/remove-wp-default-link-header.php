@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Include the Main Plugin Class
-require_once __DIR__ . '/includes/class-remove-wp-default-link-header.php';
+require_once __DIR__ . '/src/class-remove-wp-default-link-header.php';
 
 // Bootstrap the plugin
 new \Remove_WP_Default_Link_Header\Plugin();

@@ -28,7 +28,7 @@ if (filter_var($iap_enabled, FILTER_VALIDATE_BOOLEAN) === false) {
 }
 
 // 3. Include the Main Plugin Class
-require_once __DIR__ . '/includes/class-iap-auth-shield.php';
+require_once __DIR__ . '/src/class-iap-auth-shield.php';
 
 // 4. Bootstrap the plugin
 new \IAP_Auth_Shield\Plugin();
