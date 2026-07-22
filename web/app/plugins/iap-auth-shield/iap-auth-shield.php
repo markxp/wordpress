@@ -21,14 +21,8 @@ if (file_exists($autoload_path)) {
     require_once $autoload_path;
 }
 
-// 2. Read toggle environment variable (Protective mechanism, will not start if not set)
-$iap_enabled = getenv('IAP_AUTH_ENABLED') ?: (defined('IAP_AUTH_ENABLED') ? IAP_AUTH_ENABLED : false);
-if (filter_var($iap_enabled, FILTER_VALIDATE_BOOLEAN) === false) {
-    return;
-}
-
-// 3. Include the Main Plugin Class
+// 2. Include the Main Plugin Class
 require_once __DIR__ . '/src/class-iap-auth-shield.php';
 
-// 4. Bootstrap the plugin
+// 3. Bootstrap the plugin
 new \IAP_Auth_Shield\Plugin();

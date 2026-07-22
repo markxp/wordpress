@@ -1,6 +1,7 @@
 <?php
+
 /**
- * Main Plugin Class - Handles REST API hardening, feed suppression, author protection, and version hiding.
+ * Main Plugin Class - Handles REST API hardening, feed suppression, author protection, version hiding, and Instance Status reporting.
  *
  * @package Legispect_Security
  */
@@ -18,33 +19,178 @@ class Plugin
      */
     public function __construct()
     {
-        // 1. Intercept query parameters early in the init phase
-        add_action('init', [$this, 'block_query_parameter_bypasses'], 1);
+        // Always register admin hooks so admins can see status page and row status badges
+        if (is_admin()) {
+            add_action('admin_menu', [$this, 'register_admin_menu']);
+            add_filter('plugin_action_links_' . plugin_basename(__DIR__ . '/../security-hardening.php'), [$this, 'add_action_links']);
+            add_action('after_plugin_row_' . plugin_basename(__DIR__ . '/../security-hardening.php'), [$this, 'render_plugin_row_status'], 10, 2);
+        }
 
-        // 2. REST API Gatekeeper
-        add_filter('rest_authentication_errors', [$this, 'restrict_rest_api'], 50);
+        // Functional Hooks (Only active when SECURITY_HARDENING_ENABLED is set to true)
+        if ($this->is_instance_on()) {
+            // 1. Intercept query parameters early in the init phase
+            add_action('init', [$this, 'block_query_parameter_bypasses'], 1);
 
-        // 3. Disable RSS/Atom/RDF Feeds
-        add_action('do_feed', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_rdf', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_rss', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_rss2', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_atom', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_rss2_comments', [$this, 'disable_feed_handler'], 1);
-        add_action('do_feed_atom_comments', [$this, 'disable_feed_handler'], 1);
+            // 2. REST API Gatekeeper
+            add_filter('rest_authentication_errors', [$this, 'restrict_rest_api'], 50);
 
-        remove_action('wp_head', 'feed_links', 2);
-        remove_action('wp_head', 'feed_links_extra', 3);
+            // 3. Disable RSS/Atom/RDF Feeds
+            add_action('do_feed', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_rdf', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_rss', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_rss2', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_atom', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_rss2_comments', [$this, 'disable_feed_handler'], 1);
+            add_action('do_feed_atom_comments', [$this, 'disable_feed_handler'], 1);
 
-        // 4. Prevent User Enumeration (Author Queries)
-        add_filter('request', [$this, 'block_author_query_vars']);
-        add_action('template_redirect', [$this, 'block_author_archive_pages']);
+            remove_action('wp_head', 'feed_links', 2);
+            remove_action('wp_head', 'feed_links_extra', 3);
 
-        // 5. WordPress Version Hiding
-        remove_action('wp_head', 'wp_generator');
-        add_filter('the_generator', '__return_empty_string');
-        add_filter('style_loader_src', [$this, 'remove_wp_ver_from_assets'], 9999);
-        add_filter('script_loader_src', [$this, 'remove_wp_ver_from_assets'], 9999);
+            // 4. Prevent User Enumeration (Author Queries)
+            add_filter('request', [$this, 'block_author_query_vars']);
+            add_action('template_redirect', [$this, 'block_author_archive_pages']);
+
+            // 5. WordPress Version Hiding
+            remove_action('wp_head', 'wp_generator');
+            add_filter('the_generator', '__return_empty_string');
+            add_filter('style_loader_src', [$this, 'remove_wp_ver_from_assets'], 9999);
+            add_filter('script_loader_src', [$this, 'remove_wp_ver_from_assets'], 9999);
+        }
+    }
+
+    /**
+     * Check if Environment Variable toggle is enabled.
+     */
+    public function is_env_enabled(): bool
+    {
+        $enabled = getenv('SECURITY_HARDENING_ENABLED') ?: (defined('SECURITY_HARDENING_ENABLED') ? SECURITY_HARDENING_ENABLED : false);
+        return filter_var($enabled, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Check effective instance status (ON only when SECURITY_HARDENING_ENABLED=true).
+     */
+    public function is_instance_on(): bool
+    {
+        return $this->is_env_enabled();
+    }
+
+    /**
+     * Register Settings Menu item.
+     */
+    public function register_admin_menu()
+    {
+        add_options_page(
+            'Security Hardening Status',
+            'Security Hardening',
+            'manage_options',
+            'security-hardening',
+            [$this, 'render_admin_status_page']
+        );
+    }
+
+    /**
+     * Add Settings/Status link on Plugins list page.
+     */
+    public function add_action_links($links)
+    {
+        $status_link = '<a href="' . esc_url(admin_url('options-general.php?page=security-hardening')) . '">Status & Settings</a>';
+        array_unshift($links, $status_link);
+        return $links;
+    }
+
+    /**
+     * Display status badge on wp-admin/plugins.php table row.
+     */
+    public function render_plugin_row_status($plugin_file, $plugin_data)
+    {
+        $is_on = $this->is_instance_on();
+        $env_enabled = $this->is_env_enabled();
+
+        $badge_style = $is_on
+            ? 'background:#10b981; color:#fff;'
+            : 'background:#f59e0b; color:#fff;';
+        $status_text = $is_on ? '● Instance: ON' : '○ Instance: OFF';
+
+        echo '<tr class="plugin-update-tr"><td colspan="3" class="plugin-update colspanchange"><div class="update-message notice inline notice-alt" style="margin:5px 0 5px 0; border-left-color: ' . ($is_on ? '#10b981' : '#f59e0b') . ';">';
+        echo '<p><span style="' . esc_attr($badge_style) . ' padding:3px 8px; border-radius:12px; font-weight:600; font-size:11px; margin-right:8px;">' . esc_html($status_text) . '</span>';
+        echo '<strong>Instance Status:</strong> Env Var (<code>SECURITY_HARDENING_ENABLED</code>) = <code>' . ($env_enabled ? 'true' : 'false') . '</code>. ';
+        if (!$env_enabled) {
+            echo '<span style="color:#d97706;">(Security hardening is OFF because <code>SECURITY_HARDENING_ENABLED</code> environment variable is not set to <code>true</code>).</span>';
+        }
+        echo '</p></div></td></tr>';
+    }
+
+    /**
+     * Render the admin status page.
+     */
+    public function render_admin_status_page()
+    {
+        $is_on = $this->is_instance_on();
+        $env_enabled = $this->is_env_enabled();
+        ?>
+        <div class="wrap">
+            <h1>WordPress Security Hardening Status</h1>
+
+            <div style="background:#fff; border:1px solid #ccd0d4; padding:20px; border-radius:8px; margin-top:20px; max-width:800px;">
+                <h2 style="margin-top:0;">Instance Operational Indicator</h2>
+                <div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+                    <?php if ($is_on) : ?>
+                        <span style="background:#10b981; color:#fff; padding:8px 16px; border-radius:20px; font-size:18px; font-weight:bold;">
+                            ● Instance Status: ON
+                        </span>
+                        <span style="color:#10b981; font-weight:600;">System Security Hardening & Gatekeeper Protections are Active.</span>
+                    <?php else : ?>
+                        <span style="background:#ef4444; color:#fff; padding:8px 16px; border-radius:20px; font-size:18px; font-weight:bold;">
+                            ○ Instance Status: OFF
+                        </span>
+                        <span style="color:#ef4444; font-weight:600;">Hardening Disabled (Environment variable SECURITY_HARDENING_ENABLED is OFF).</span>
+                    <?php endif; ?>
+                </div>
+
+                <table class="widefat fixed striped" style="margin-top:15px;">
+                    <thead>
+                        <tr>
+                            <th>Required Environment Switch</th>
+                            <th>Current Value</th>
+                            <th>Required for ON</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Environment Variable (<code>SECURITY_HARDENING_ENABLED</code>)</strong></td>
+                            <td><code><?php echo $env_enabled ? 'true' : 'false'; ?></code></td>
+                            <td><code>true</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Database Plugin Switch</strong></td>
+                            <td><code>Active</code></td>
+                            <td>Plugin activated / loaded</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Combined Operational State</strong></td>
+                            <td><strong><?php echo $is_on ? '<span style="color:#10b981;">ON (Protected)</span>' : '<span style="color:#ef4444;">OFF (Unprotected)</span>'; ?></strong></td>
+                            <td>Env Var SECURITY_HARDENING_ENABLED=true & Plugin active</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 style="margin-top:25px;">Active Protection Modules (When Instance is ON)</h3>
+                <ul style="list-style-type:disc; padding-left:20px; line-height:1.6;">
+                    <li><strong>REST API Gatekeeper:</strong> Enforces authentication for sensitive REST routes and blocks anonymous POST/PUT/DELETE operations.</li>
+                    <li><strong>Query Parameter Bypass Blocker:</strong> Blocks direct <code>rest_route</code>, <code>feed</code>, <code>author</code>, <code>tb</code>, and  communication parameter attacks.</li>
+                    <li><strong>Feed Suppression:</strong> Disables RSS/Atom/RDF feeds for anonymous visitors to prevent automated content scrapers.</li>
+                    <li><strong>User Enumeration Defense:</strong> Suppresses author archive pages and strips <code>author</code> query parameters for non-logged-in users.</li>
+                    <li><strong>Version Hiding:</strong> Removes generator meta tags and <code>ver=</code> query strings from static script/style URLs.</li>
+                </ul>
+
+                <div style="margin-top:20px; padding:12px; background:#f9fafb; border-left:4px solid #3b82f6;">
+                    <h4 style="margin:0 0 5px 0;">Requirements to turn ON this instance:</h4>
+                    <p style="margin:0;">Set the environment variable <code>SECURITY_HARDENING_ENABLED=true</code> in your environment file, and ensure the plugin is activated in WordPress.</p>
+                </div>
+            </div>
+        </div>
+        <?php
     }
 
     /**

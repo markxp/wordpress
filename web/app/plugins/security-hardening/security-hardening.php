@@ -17,13 +17,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// 1. Read toggle environment variable (Protective mechanism, defaults to false)
-$enabled = getenv('SECURITY_HARDENING_ENABLED') ?: (defined('SECURITY_HARDENING_ENABLED') ? SECURITY_HARDENING_ENABLED : false);
-if (filter_var($enabled, FILTER_VALIDATE_BOOLEAN) === false) {
-    return;
-}
-
-// 2. Register Self-Contained PSR-4 Autoloader
+// 1. Register Self-Contained PSR-4 Autoloader
 spl_autoload_register(function ($class) {
     $prefix = 'Legispect\\Security\\';
     $base_dir = __DIR__ . '/src/';
@@ -41,5 +35,5 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// 3. Bootstrap the plugin
+// 2. Bootstrap the plugin
 new \Legispect\Security\Plugin();
