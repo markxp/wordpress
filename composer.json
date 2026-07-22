@@ -45,7 +45,7 @@
         "roots/bedrock-disallow-indexing": "^2.0",
         "roots/wordpress": "^6.9",
         "roots/wp-config": "^1.0",
-        "wp-theme/twentytwentyfour": "^1.4",
+        "wp-theme/twentytwentyfour": "^1",
         "wp-plugin/wp-stateless": "^4.0",
         "wp-plugin/google-site-kit": "^1",
         "koodimonni-language/core-zh_tw": "^6.9",
