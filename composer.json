@@ -104,7 +104,7 @@
             "rm -rf web/app/plugins/wp-stateless"
         ],
         "update:dev": [
-            "composer update --ignore-platform-reqs --quiet"
+            "composer update --ignore-platform-reqs"
         ],
         "validate:quiet": [
             "composer validate 1>/dev/null"
