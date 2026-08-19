@@ -97,11 +97,20 @@
         "test": [
             "phpunit"
         ],
+        "test:container": [
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/phpunit || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/phpunit"
+        ],
         "lint": [
             "pint --test"
         ],
+        "lint:container": [
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/pint --test || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/pint --test"
+        ],
         "lint:fix": [
             "pint"
+        ],
+        "lint:fix:container": [
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/pint || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.4-cli php vendor/bin/pint"
         ],
         "clean": [
             "rm -rf vendor",
