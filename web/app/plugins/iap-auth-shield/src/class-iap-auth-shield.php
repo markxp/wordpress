@@ -87,7 +87,7 @@ class Plugin
             'IAP Auth Shield',
             'manage_options',
             'iap-auth-shield',
-            [$this, 'render_admin_status_page']
+            [$this, 'render_admin_status_page'],
         );
     }
 
@@ -199,12 +199,13 @@ class Plugin
     public function handle_iap_authentication()
     {
         // Only enforce verification on "backend admin pages" or "login page". Frontend is open to visitors.
-        if (!is_admin() && !in_array($GLOBALS['pagenow'], ['wp-login.php'])) {
+        if (!is_admin() && !in_array($GLOBALS['pagenow'] ?? '', ['wp-login.php'], true)) {
             return;
         }
 
         if (!$this->audience) {
             wp_die('IAP Auth Configuration Error: IAP_AUDIENCE is missing. Backend access is disabled for security.', 'Configuration Error', ['response' => 500]);
+            return;
         }
 
         $jwt = $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] ?? null;
@@ -212,16 +213,19 @@ class Plugin
         // If trying to access wp-admin but without IAP JWT assertion header, block access.
         if (!$jwt) {
             wp_die('Access Denied: Missing IAP credentials. Please access through the correct domain.', 'Unauthorized', ['response' => 401]);
+            return;
         }
 
         try {
             $payload = $this->verify_jwt($jwt);
         } catch (\Exception $e) {
             wp_die('IAP Verification Failed: ' . $e->getMessage(), 'Forbidden', ['response' => 403]);
+            return;
         }
 
         if (!$payload || empty($payload['email'])) {
             wp_die('IAP Verification Failed: Payload empty or missing email.', 'Forbidden', ['response' => 403]);
+            return;
         }
 
         $email = $payload['email'];
@@ -234,7 +238,7 @@ class Plugin
                 wp_set_auth_cookie($user->ID);
 
                 // Auto redirect to backend from wp-login.php
-                if ($GLOBALS['pagenow'] === 'wp-login.php') {
+                if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php') {
                     wp_safe_redirect(admin_url());
                     exit;
                 }
@@ -242,6 +246,7 @@ class Plugin
         } else {
             // Google authenticated, but user account not found in WordPress database
             wp_die("Your Google account ({$email}) verified successfully, but there is no corresponding user in the system. Please contact the administrator.", 'Unauthorized', ['response' => 403]);
+            return;
         }
     }
 
@@ -287,7 +292,7 @@ class Plugin
         );
     }
 
-    private function get_google_iap_keys()
+    protected function get_google_iap_keys()
     {
         $transient_key = 'gcp_iap_public_keys';
         $keys = get_transient($transient_key);
@@ -306,7 +311,7 @@ class Plugin
         return $keys;
     }
 
-    private function verify_jwt($jwt)
+    protected function verify_jwt($jwt)
     {
         if (!class_exists('Firebase\JWT\JWT')) {
             throw new \Exception('Firebase\JWT\JWT class not found. Ensure Composer dependencies are installed.');

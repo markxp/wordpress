@@ -85,7 +85,7 @@ class Plugin
             'Security Hardening',
             'manage_options',
             'security-hardening',
-            [$this, 'render_admin_status_page']
+            [$this, 'render_admin_status_page'],
         );
     }
 
@@ -207,7 +207,7 @@ class Plugin
             wp_die(
                 __('Direct rest_route query parameter access is disabled for security.'),
                 __('Bad Request'),
-                array('response' => 400)
+                ['response' => 400],
             );
         }
 
@@ -226,7 +226,7 @@ class Plugin
             wp_die(
                 __('Trackbacks are disabled on this site.'),
                 __('Forbidden'),
-                array('response' => 403)
+                ['response' => 403],
             );
         }
 
@@ -262,7 +262,7 @@ class Plugin
             return new \WP_Error(
                 'rest_cannot_access',
                 __('Only authenticated users can create or modify resources.'),
-                array('status' => 401)
+                ['status' => 401],
             );
         }
 
@@ -303,7 +303,7 @@ class Plugin
         return new \WP_Error(
             'rest_cannot_access',
             __('Only authenticated users can access this resource.'),
-            array('status' => 401)
+            ['status' => 401],
         );
     }
 
@@ -363,7 +363,7 @@ class Plugin
             wp_die(
                 __('Resource not found.'),
                 __('Not Found'),
-                array('response' => 404)
+                ['response' => 404],
             );
         }
         exit;

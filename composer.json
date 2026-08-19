@@ -58,7 +58,10 @@
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
-        "laravel/pint": "^1.27"
+        "laravel/pint": "^1.27",
+        "phpunit/phpunit": "^11.0",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6"
     },
     "config": {
         "optimize-autoloader": true,
@@ -91,6 +94,9 @@
         "wordpress-install-dir": "web/wp"
     },
     "scripts": {
+        "test": [
+            "phpunit"
+        ],
         "lint": [
             "pint --test"
         ],

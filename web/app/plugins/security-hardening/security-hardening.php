@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name:       WordPress Security Hardening
  * Plugin URI:        https://www.legispect.com/
