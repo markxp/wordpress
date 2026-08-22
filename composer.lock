@@ -3843,15 +3843,15 @@
         },
         {
             "name": "wp-theme/twentytwentyfour",
-            "version": "1.5",
+            "version": "1.6",
             "source": {
                 "type": "svn",
                 "url": "https://themes.svn.wordpress.org/twentytwentyfour/",
-                "reference": "1.5"
+                "reference": "1.6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/theme/twentytwentyfour.1.5.zip"
+                "url": "https://downloads.wordpress.org/theme/twentytwentyfour.1.6.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
@@ -3865,7 +3865,7 @@
                 "issues": "https://wordpress.org/support/theme/twentytwentyfour",
                 "source": "https://themes.svn.wordpress.org/twentytwentyfour"
             },
-            "time": "2026-05-20T21:56:34+00:00"
+            "time": "2026-08-19T16:46:58+00:00"
         }
     ],
     "packages-dev": [
