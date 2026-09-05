@@ -3812,15 +3812,15 @@
         },
         {
             "name": "wp-plugin/wp-stateless",
-            "version": "4.4.1",
+            "version": "4.4.3",
             "source": {
                 "type": "svn",
                 "url": "https://plugins.svn.wordpress.org/wp-stateless/",
-                "reference": "tags/4.4.1"
+                "reference": "tags/4.4.3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://downloads.wordpress.org/plugin/wp-stateless.4.4.1.zip"
+                "url": "https://downloads.wordpress.org/plugin/wp-stateless.4.4.3.zip"
             },
             "require": {
                 "composer/installers": "~1.0|~2.0"
@@ -3839,7 +3839,7 @@
                 "issues": "https://wordpress.org/support/plugin/wp-stateless",
                 "source": "https://plugins.svn.wordpress.org/wp-stateless"
             },
-            "time": "2026-03-23T19:23:21+00:00"
+            "time": "2026-09-05T15:51:57+00:00"
         },
         {
             "name": "wp-theme/twentytwentyfour",
