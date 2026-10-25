@@ -10,7 +10,7 @@ RUN git clone --depth=1 --branch main https://github.com/legispect/php-fpm-healt
     chmod +x /install-php-extensions
 
 FROM scratch as go-src-cache
-COPY --from=downloader /src/* ./
+COPY --from=downloader /src /src
 
 FROM golang:latest as go-build
 WORKDIR /usr/src/app
@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM scratch as install-php-extension-cache
 COPY --from=downloader /install-php-extensions /
 
-FROM mirror.gcr.io/library/php:8.5-fpm as php-fpm
+FROM mirror.gcr.io/library/php:8.5.12-fpm as php-fpm
 # Copy mlocati's installer from downloader stage
 COPY --from=install-php-extension-cache --chmod=754 /install-php-extensions /usr/local/bin/
 
@@ -88,8 +88,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     set -ex; \
     apt-get update && apt-get install -y --no-install-recommends zip unzip curl; \
-    # Enable recommended OPCache settings (https://secure.php.net/manual/en/opcache.installation.php)
-    docker-php-ext-enable opcache; \
+    # Configure recommended OPCache settings (https://secure.php.net/manual/en/opcache.installation.php)
     { \
     echo 'opcache.memory_consumption=256'; \
     echo 'opcache.interned_strings_buffer=32'; \

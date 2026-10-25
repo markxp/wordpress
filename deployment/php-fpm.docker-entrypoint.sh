@@ -43,7 +43,7 @@ if [ -f "$POOL_CONF" ]; then
         -e "s/^;pm.status_listen = 127.0.0.1:9001/pm.status_listen = ${PM_STATUS_LISTEN:-127.0.0.1:9001}/g" \
         -e "s|^;pm.status_path = /status|pm.status_path = /status|g" \
         -e 's|^;access.format = "%r - %u %t \\"%m %r%q%q\\" %s %f %{milli}d %{kilo}m %c%%"|access.format = "%{x-real-ip}o %s %{request_method}e %{request_uri}e duration=%{milliseconds}d mem=%{megabytes}m cpu=%c%%"|g' \
-        -e 's|^;access.suppress_path[] = /health_check.php|access.suppress_path[] = /status|g' \
+        -e 's|^;access.suppress_path\[\] = /health_check.php|access.suppress_path[] = /status|g' \
         -e 's|^;slowlog = log/$pool.log.slow|slowlog = /dev/stderr|g' \
         -e 's|^;request_slowlog_timeout = 0|request_slowlog_timeout = 3s|g' \
         -e 's|^;chdir = /var/www|chdir = web|g' \
