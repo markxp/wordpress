@@ -43,7 +43,6 @@ if (file_exists($root_dir . '/.env')) {
 
     $dotenv->load();
 
-    $dotenv->required(['WP_HOME', 'WP_SITEURL']);
     if (!env('DATABASE_URL')) {
         $dotenv->required(['DB_NAME', 'DB_USER', 'DB_PASSWORD']);
     }
@@ -72,6 +71,11 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $dynamic_home = "{$protocol}://{$http_host}";
     Config::define('WP_HOME', $dynamic_home);
     Config::define('WP_SITEURL', "{$dynamic_home}/wp");
+} elseif (env('WP_HOME')) {
+    Config::define('WP_HOME', env('WP_HOME'));
+    Config::define('WP_SITEURL', env('WP_SITEURL') ?: env('WP_HOME') . '/wp');
+} else {
+    throw new \RuntimeException('Environment variable WP_HOME is required for CLI commands when HTTP_HOST is not available.');
 }
 
 /**
@@ -116,6 +120,16 @@ Config::define('AUTH_SALT', env('AUTH_SALT'));
 Config::define('SECURE_AUTH_SALT', env('SECURE_AUTH_SALT'));
 Config::define('LOGGED_IN_SALT', env('LOGGED_IN_SALT'));
 Config::define('NONCE_SALT', env('NONCE_SALT'));
+
+/**
+ * Google Site Kit Encryption Keys
+ */
+if (env('GOOGLESITEKIT_ENCRYPTION_KEY')) {
+    Config::define('GOOGLESITEKIT_ENCRYPTION_KEY', env('GOOGLESITEKIT_ENCRYPTION_KEY'));
+}
+if (env('GOOGLESITEKIT_ENCRYPTION_SALT')) {
+    Config::define('GOOGLESITEKIT_ENCRYPTION_SALT', env('GOOGLESITEKIT_ENCRYPTION_SALT'));
+}
 
 /**
  * Custom Settings
