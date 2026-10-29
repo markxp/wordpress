@@ -19,6 +19,18 @@ The plugin uses the following environment variables:
 - `IAP_AUTH_ENABLED`: Set to `true` to enable the plugin.
 - `IAP_AUDIENCE`: The IAP Audience string (e.g., `/projects/PROJECT_NUMBER/global/backendServices/SERVICE_ID`).
 
+## Extensibility (Filter Hooks)
+
+### `iap_auth_shield_api_whitelist`
+Allows themes or plugins to allowlist additional read-only (`GET`) REST API route prefixes for unauthenticated requests:
+
+```php
+add_filter('iap_auth_shield_api_whitelist', function (array $whitelist): array {
+    $whitelist[] = '/my-custom/v1';
+    return $whitelist;
+});
+```
+
 ## Installation
 
 1. Copy the plugin folder to `wp-content/plugins/`.

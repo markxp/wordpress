@@ -145,6 +145,26 @@ class PluginTest extends TestCase
         unset($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
     }
 
+    public function test_restrict_rest_api_supports_custom_filter_prefixes(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        Functions\when('wp_parse_url')->justReturn('/wp-json/my-custom/v1/items');
+        Functions\when('rest_get_url_prefix')->justReturn('wp-json');
+        Filters\expectApplied('security_hardening_allowed_rest_prefixes')
+            ->once()
+            ->andReturn(['/wp/v2/posts', '/my-custom/v1']);
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/wp-json/my-custom/v1/items';
+
+        $plugin = new Plugin();
+        $result = $plugin->restrict_rest_api(null);
+
+        $this->assertNull($result);
+
+        unset($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+    }
+
     public function test_restrict_rest_api_blocks_sensitive_endpoints_like_users(): void
     {
         Functions\when('is_user_logged_in')->justReturn(false);

@@ -22,6 +22,13 @@ Supports twin-service/multi-container architectures sharing the same database. C
     *   `/wp/v2/comments`
 *   **Anonymous Writes Blocked**: Explicitly blocks all anonymous database write operations (`POST`, `PUT`, `PATCH`, `DELETE`) globally across all endpoints (including comment submission and media uploads).
 *   **User Endpoint Protection**: Anonymous requests to `/wp/v2/users` or `/wp/v2/users/N` are strictly blocked.
+*   **Extensible Whitelist (`security_hardening_allowed_rest_prefixes`)**: Allowlist additional public read-only (`GET`, `HEAD`) route prefixes via the `security_hardening_allowed_rest_prefixes` filter:
+    ```php
+    add_filter('security_hardening_allowed_rest_prefixes', function (array $prefixes): array {
+        $prefixes[] = '/my-custom/v1';
+        return $prefixes;
+    });
+    ```
 
 ### 3. Query Parameter Bypass Blocker
 Intercepts initialization (`init` hook at priority 1) and blocks direct query parameter access to standard bypass parameters for anonymous requests:

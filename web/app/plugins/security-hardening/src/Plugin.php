@@ -267,7 +267,7 @@ class Plugin
         }
 
         // List of whitelisted REST route prefixes allowed for anonymous visitors.
-        $allowed_prefixes = [
+        $allowed_prefixes = apply_filters('security_hardening_allowed_rest_prefixes', [
             '/wp/v2/posts',
             '/wp/v2/pages',
             '/wp/v2/categories',
@@ -276,7 +276,7 @@ class Plugin
             '/wp/v2/taxonomies',
             '/wp/v2/media',
             '/wp/v2/comments',
-        ];
+        ]);
 
         // Get the requested REST route (cater to pretty URIs)
         $current_route = '';

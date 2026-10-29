@@ -215,6 +215,23 @@ class IAPAuthShieldTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function test_api_firewall_supports_custom_filter_prefixes(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        Filters\expectApplied('iap_auth_shield_api_whitelist')
+            ->once()
+            ->andReturn(['/wp/v2/posts', '/my-custom/v1']);
+
+        $request = Mockery::mock();
+        $request->shouldReceive('get_route')->andReturn('/my-custom/v1/items');
+        $request->shouldReceive('get_method')->andReturn('GET');
+
+        $plugin = new Plugin();
+        $result = $plugin->api_firewall(null, null, $request);
+
+        $this->assertNull($result);
+    }
+
     public function test_api_firewall_blocks_unauthorized_endpoints(): void
     {
         Functions\when('is_user_logged_in')->justReturn(false);

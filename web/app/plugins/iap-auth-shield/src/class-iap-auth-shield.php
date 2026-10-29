@@ -270,9 +270,10 @@ class Plugin
             }
         }
 
-        // 3. Check regular whitelist
+        // 3. Check regular whitelist (extensible via filter)
+        $whitelist = apply_filters('iap_auth_shield_api_whitelist', $this->api_whitelist);
         $is_whitelisted = false;
-        foreach ($this->api_whitelist as $allowed_route) {
+        foreach ($whitelist as $allowed_route) {
             if (strpos($route, $allowed_route) === 0) {
                 $is_whitelisted = true;
                 break;
