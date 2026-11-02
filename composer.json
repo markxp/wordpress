@@ -52,7 +52,6 @@
         "wp-plugin/wp-stateless": "^4.0",
         "wp-plugin/google-site-kit": "^1",
         "koodimonni-language/core-zh_tw": "^7.0",
-        "open-telemetry/opentelemetry": "^1.0",
         "open-telemetry/exporter-otlp": "^1.4",
         "open-telemetry/opentelemetry-auto-wordpress": "^0.3.0",
         "php-http/guzzle7-adapter": "^1.1",
