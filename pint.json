@@ -3,7 +3,6 @@
     "exclude": [
         "vendor",
         "web/wp",
-        "web/app/plugins/google-apps-login",
         "web/app/plugins/google-site-kit",
         "web/app/plugins/google-site-kit-dev-settings",
         "web/app/plugins/wp-stateless",
