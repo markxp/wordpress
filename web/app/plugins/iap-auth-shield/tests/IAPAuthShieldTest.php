@@ -358,4 +358,53 @@ class IAPAuthShieldTest extends TestCase
         Functions\when('wp_parse_url')->justReturn(null);
         $this->assertSame($content, $plugin->strip_current_origin_from_local_paths($content));
     }
+
+    public function test_strip_current_origin_handles_mixed_case_host_and_scheme(): void
+    {
+        Functions\when('home_url')->justReturn('https://EDITOR-HOST.run.app');
+        Functions\when('wp_parse_url')->justReturn('EDITOR-HOST.run.app');
+
+        $plugin = new Plugin();
+        $input = '<img src="HTTPS://editor-host.run.app/app/uploads/pic.jpg">';
+        $output = $plugin->strip_current_origin_from_local_paths($input);
+
+        $this->assertSame('<img src="/app/uploads/pic.jpg">', $output);
+    }
+
+    public function test_strip_current_origin_preserves_query_string_and_anchor(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor-host.run.app');
+        Functions\when('wp_parse_url')->justReturn('editor-host.run.app');
+
+        $plugin = new Plugin();
+        $input = '<a href="https://editor-host.run.app/app/docs/file.pdf?ver=2.0#page=3">Download</a>';
+        $output = $plugin->strip_current_origin_from_local_paths($input);
+
+        $this->assertSame('<a href="/app/docs/file.pdf?ver=2.0#page=3">Download</a>', $output);
+    }
+
+    public function test_strip_current_origin_handles_multiple_asset_tags_in_single_content(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor.run.app');
+        Functions\when('wp_parse_url')->justReturn('editor.run.app');
+
+        $plugin = new Plugin();
+        $input = implode('', [
+            '<link rel="stylesheet" href="https://editor.run.app/app/themes/theme/style.css">',
+            '<script src="https://editor.run.app/wp/wp-includes/js/jquery.js"></script>',
+            '<img src="https://editor.run.app/app/uploads/img1.png">',
+            '<img src="https://editor.run.app/app/uploads/img2.jpg">',
+        ]);
+
+        $output = $plugin->strip_current_origin_from_local_paths($input);
+
+        $expected = implode('', [
+            '<link rel="stylesheet" href="/app/themes/theme/style.css">',
+            '<script src="/wp/wp-includes/js/jquery.js"></script>',
+            '<img src="/app/uploads/img1.png">',
+            '<img src="/app/uploads/img2.jpg">',
+        ]);
+
+        $this->assertSame($expected, $output);
+    }
 }

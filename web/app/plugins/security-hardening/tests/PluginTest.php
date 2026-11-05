@@ -273,6 +273,70 @@ class PluginTest extends TestCase
         unset($_GET['rest_route']);
     }
 
+    public function test_restrict_rest_api_allows_options_cors_preflight(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        $_SERVER['REQUEST_METHOD'] = 'OPTIONS';
+
+        $plugin = new Plugin();
+        $result = $plugin->restrict_rest_api(null);
+
+        $this->assertNull($result);
+
+        unset($_SERVER['REQUEST_METHOD']);
+    }
+
+    public function test_restrict_rest_api_allows_head_requests_to_whitelisted_routes(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        Functions\when('wp_parse_url')->justReturn('/wp-json/wp/v2/pages');
+        Functions\when('rest_get_url_prefix')->justReturn('wp-json');
+        $_SERVER['REQUEST_METHOD'] = 'HEAD';
+        $_SERVER['REQUEST_URI'] = '/wp-json/wp/v2/pages';
+
+        $plugin = new Plugin();
+        $result = $plugin->restrict_rest_api(null);
+
+        $this->assertNull($result);
+
+        unset($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+    }
+
+    public function test_block_query_parameter_bypasses_dies_on_trackback_parameter(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        $_POST['tb'] = '1';
+
+        Functions\expect('wp_die')
+            ->once()
+            ->with(
+                'Trackbacks are disabled on this site.',
+                'Forbidden',
+                ['response' => 403],
+            );
+
+        $plugin = new Plugin();
+        $plugin->block_query_parameter_bypasses();
+        $this->assertTrue(true);
+
+        unset($_POST['tb']);
+    }
+
+    public function test_block_query_parameter_bypasses_allows_all_for_logged_in_users(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(true);
+        $_GET['rest_route'] = '/wp/v2/users';
+        $_GET['tb'] = '1';
+
+        Functions\expect('wp_die')->never();
+
+        $plugin = new Plugin();
+        $plugin->block_query_parameter_bypasses();
+        $this->assertTrue(true);
+
+        unset($_GET['rest_route'], $_GET['tb']);
+    }
+
     public function test_register_admin_menu_calls_add_submenu_page(): void
     {
         Functions\expect('add_submenu_page')

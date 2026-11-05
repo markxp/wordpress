@@ -292,4 +292,148 @@ class BaseEngineTest extends TestCase
         $this->assertStringContainsString('style5.css', $instance->emittedHeader);
         $this->assertStringNotContainsString('style6.css', $instance->emittedHeader);
     }
+
+    public function test_inspect_and_emit_link_headers_skips_when_headers_already_sent(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = true;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNull($instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_bails_on_json_request(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(true);
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNull($instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_deduplicates_same_asset_url(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(false);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            return $url . '?' . $key . '=' . $val;
+        });
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        // Two handles pointing to the exact same URL
+        $wp_styles->queue = ['handle-a', 'handle-b'];
+        $wp_styles->registered = [
+            'handle-a' => (object) ['src' => 'https://example.com/shared.css', 'ver' => '1.0'],
+            'handle-b' => (object) ['src' => 'https://example.com/shared.css', 'ver' => '1.0'],
+        ];
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNotNull($instance->emittedHeader);
+        $this->assertSame('<https://example.com/shared.css?ver=1.0>; rel=preload; as=style', $instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_supports_protocol_relative_urls(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(false);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->justReturn('https://my-site.com');
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $wp_styles->queue = ['cdn-style'];
+        $wp_styles->registered = [
+            'cdn-style' => (object) ['src' => '//cdn.example.com/lib.css', 'ver' => null],
+        ];
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNotNull($instance->emittedHeader);
+        // Should NOT prepend site_url() to protocol-relative URLs
+        $this->assertStringContainsString('//cdn.example.com/lib.css', $instance->emittedHeader);
+        $this->assertStringNotContainsString('my-site.com', $instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_does_not_skip_styles_when_inline_limit_zero(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(false);
+        Functions\when('get_option')->justReturn('0'); // Disabled inlining
+        Functions\when('site_url')->returnArg();
+
+        $tmp = tempnam(sys_get_temp_dir(), 'zero_limit_');
+        file_put_contents($tmp, 'body { color: blue; }');
+
+        try {
+            global $wp_styles, $wp_scripts;
+            $wp_styles = new WP_Styles();
+            $wp_scripts = new WP_Scripts();
+
+            $wp_styles->queue = ['always-external'];
+            $wp_styles->registered = [
+                'always-external' => (object) ['src' => 'https://example.com/ext.css', 'ver' => null],
+            ];
+            $wp_styles->add_data('always-external', 'path', $tmp);
+
+            $instance = new TestableEarlyHints();
+            $instance->mockHeadersSent = false;
+            $instance->inspect_and_emit_link_headers();
+
+            $this->assertNotNull($instance->emittedHeader);
+            $this->assertStringContainsString('ext.css', $instance->emittedHeader);
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    public function test_inspect_and_emit_link_headers_does_not_skip_styles_when_file_does_not_exist(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(false);
+        Functions\when('get_option')->justReturn('50000');
+        Functions\when('site_url')->returnArg();
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $wp_styles->queue = ['missing-file'];
+        $wp_styles->registered = [
+            'missing-file' => (object) ['src' => 'https://example.com/missing.css', 'ver' => null],
+        ];
+        $wp_styles->add_data('missing-file', 'path', '/path/to/nonexistent/file.css');
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNotNull($instance->emittedHeader);
+        $this->assertStringContainsString('missing.css', $instance->emittedHeader);
+    }
 }
