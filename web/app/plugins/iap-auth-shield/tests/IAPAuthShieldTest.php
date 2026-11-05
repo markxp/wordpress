@@ -295,4 +295,67 @@ class IAPAuthShieldTest extends TestCase
             $output['post_content'],
         );
     }
+
+    public function test_normalize_editor_urls_handles_custom_port_and_multiple_schemes(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor-dev.run.app:8443');
+        Functions\when('wp_parse_url')->justReturn('editor-dev.run.app');
+
+        $plugin = new Plugin();
+        $input = [
+            'post_content' => '<a href="https://editor-dev.run.app:8443/app/uploads/file.pdf">Doc</a><script src="http://editor-dev.run.app:8443/wp/wp-includes/js/script.js"></script>',
+        ];
+
+        $output = $plugin->normalize_editor_urls_in_post_data($input);
+
+        $this->assertSame(
+            '<a href="/app/uploads/file.pdf">Doc</a><script src="/wp/wp-includes/js/script.js"></script>',
+            $output['post_content'],
+        );
+    }
+
+    public function test_normalize_editor_urls_handles_non_array_or_empty_content(): void
+    {
+        $plugin = new Plugin();
+
+        $this->assertNull($plugin->normalize_editor_urls_in_post_data(null));
+        $this->assertSame('string-data', $plugin->normalize_editor_urls_in_post_data('string-data'));
+
+        $emptyArray = ['post_title' => 'Sample'];
+        $this->assertSame($emptyArray, $plugin->normalize_editor_urls_in_post_data($emptyArray));
+
+        $emptyContent = ['post_content' => ''];
+        $this->assertSame($emptyContent, $plugin->normalize_editor_urls_in_post_data($emptyContent));
+
+        $nonStringContent = ['post_content' => 12345];
+        $this->assertSame($nonStringContent, $plugin->normalize_editor_urls_in_post_data($nonStringContent));
+    }
+
+    public function test_normalize_editor_urls_preserves_external_urls_and_non_app_wp_paths(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor-bs4ppedptq-de.a.run.app');
+        Functions\when('wp_parse_url')->justReturn('editor-bs4ppedptq-de.a.run.app');
+
+        $plugin = new Plugin();
+        $input = [
+            'post_content' => '<a href="https://example.com/app/test.png">External</a><a href="https://editor-bs4ppedptq-de.a.run.app/some-page">Internal Page</a>',
+        ];
+
+        $output = $plugin->normalize_editor_urls_in_post_data($input);
+
+        // Non-app/wp paths and different hosts must remain untouched
+        $this->assertSame($input['post_content'], $output['post_content']);
+    }
+
+    public function test_strip_current_origin_returns_unmodified_when_home_url_empty_or_has_no_host(): void
+    {
+        Functions\when('home_url')->justReturn('');
+        $plugin = new Plugin();
+        $content = '<img src="https://editor.run.app/app/img.png">';
+        $this->assertSame($content, $plugin->strip_current_origin_from_local_paths($content));
+
+        Functions\when('home_url')->justReturn('invalid-url-without-scheme');
+        Functions\when('wp_parse_url')->justReturn(null);
+        $this->assertSame($content, $plugin->strip_current_origin_from_local_paths($content));
+    }
 }

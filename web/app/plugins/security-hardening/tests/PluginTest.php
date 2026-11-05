@@ -115,6 +115,67 @@ class PluginTest extends TestCase
         $this->assertSame($pluginSrc, $plugin->remove_wp_ver_from_assets($pluginSrc));
     }
 
+    public function test_remove_wp_ver_from_assets_handles_empty_or_non_string_inputs(): void
+    {
+        $plugin = new Plugin();
+        $this->assertSame('', $plugin->remove_wp_ver_from_assets(''));
+        $this->assertNull($plugin->remove_wp_ver_from_assets(null));
+        $this->assertFalse($plugin->remove_wp_ver_from_assets(false));
+    }
+
+    public function test_remove_wp_ver_from_assets_ignores_assets_without_version_query_param(): void
+    {
+        Functions\when('get_bloginfo')->justReturn('6.8.0');
+
+        $plugin = new Plugin();
+        $srcNoVer = 'https://example.com/wp-includes/css/dist/style.min.css';
+        $this->assertSame($srcNoVer, $plugin->remove_wp_ver_from_assets($srcNoVer));
+    }
+
+    public function test_remove_wp_ver_from_assets_falls_back_to_nonce_salt_constant(): void
+    {
+        Functions\when('get_bloginfo')->justReturn('6.8.0');
+        // wp_salt returns empty string so fallback to NONCE_SALT constant occurs
+        Functions\when('wp_salt')->justReturn('');
+        Functions\when('remove_query_arg')->alias(function ($key, $url) {
+            return preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&]*(&?)/', '', $url);
+        });
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            $sep = str_contains($url, '?') ? '&' : '?';
+            return $url . $sep . $key . '=' . $val;
+        });
+
+        $plugin = new Plugin();
+        $src = 'https://example.com/wp-includes/style.css?ver=6.8.0';
+        $cleaned = $plugin->remove_wp_ver_from_assets($src);
+
+        $this->assertStringNotContainsString('ver=6.8.0', $cleaned);
+        $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}$/', $cleaned);
+    }
+
+    public function test_remove_wp_ver_from_assets_preserves_other_query_parameters(): void
+    {
+        Functions\when('get_bloginfo')->justReturn('6.8.0');
+        Functions\when('wp_salt')->justReturn('test-salt');
+        Functions\when('remove_query_arg')->alias(function ($key, $url) {
+            $url = preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&]*(&?)/', '$1', $url);
+            return rtrim(rtrim($url, '&'), '?');
+        });
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            $sep = str_contains($url, '?') ? '&' : '?';
+            return $url . $sep . $key . '=' . $val;
+        });
+
+        $plugin = new Plugin();
+        $src = 'https://example.com/wp-includes/style.css?media=all&ver=6.8.0&debug=true';
+        $cleaned = $plugin->remove_wp_ver_from_assets($src);
+
+        $this->assertStringNotContainsString('ver=6.8.0', $cleaned);
+        $this->assertStringContainsString('media=all', $cleaned);
+        $this->assertStringContainsString('debug=true', $cleaned);
+        $this->assertMatchesRegularExpression('/&ver=[a-f0-9]{8}/', $cleaned);
+    }
+
     public function test_restrict_rest_api_allows_logged_in_users(): void
     {
         Functions\when('is_user_logged_in')->justReturn(true);
