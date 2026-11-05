@@ -17,6 +17,8 @@ if (!defined('ABSPATH')) {
 
 abstract class Base
 {
+    public const DEFAULT_INLINE_SIZE_LIMIT = 0;
+
     public function __construct()
     {
         // Hook into template_redirect to run asset inspection before template rendering and header outputs.
@@ -43,7 +45,7 @@ abstract class Base
      */
     public function styles_inline_size_limit($default)
     {
-        $value = get_option('hlhg_inline_size_limit', '0');
+        $value = get_option('hlhg_inline_size_limit', (string) self::DEFAULT_INLINE_SIZE_LIMIT);
         $value = intval($value);
 
         return apply_filters('hlhg_styles_inline_size_limit', $value);
@@ -71,7 +73,9 @@ abstract class Base
 
         // 1. Trigger the standard scripts and styles enqueuing hooks early.
         // This populates the $wp_styles->queue and $wp_scripts->queue.
-        do_action('wp_enqueue_scripts');
+        if (!did_action('wp_enqueue_scripts')) {
+            do_action('wp_enqueue_scripts');
+        }
 
         // 2. Resolve all dependencies so we get the complete list of assets that will be printed.
         $wp_styles->all_deps($wp_styles->queue);
@@ -104,6 +108,8 @@ abstract class Base
         $theme_slug = get_stylesheet();
         $primary_styles = [];
         $other_styles = [];
+        $inline_limit = $this->styles_inline_size_limit(self::DEFAULT_INLINE_SIZE_LIMIT);
+        $total_inline_size = 0;
 
         if (!empty($wp_styles->to_do) && is_array($wp_styles->to_do)) {
             foreach ($wp_styles->to_do as $handle) {
@@ -117,7 +123,23 @@ abstract class Base
                     continue;
                 }
 
-                $url = $this->resolve_asset_url($style->src, $style->ver);
+                // Skip stylesheets that WordPress will inline into <style> tags (when path is registered and within cumulative inline limit).
+                if ($inline_limit > 0 && method_exists($wp_styles, 'get_data')) {
+                    $style_path = $wp_styles->get_data($handle, 'path');
+                    $after = $wp_styles->get_data($handle, 'after');
+                    if (empty($after) && is_string($style_path) && $style_path !== '' && is_file($style_path)) {
+                        $fsize = @filesize($style_path);
+                        if (is_int($fsize) && ($total_inline_size + $fsize) <= $inline_limit) {
+                            $total_inline_size += $fsize;
+                            continue;
+                        }
+                    }
+                }
+
+                $url = $this->resolve_asset_url($style->src, $style->ver, 'style_loader_src', $handle);
+                if (!is_string($url) || $url === '') {
+                    continue;
+                }
                 $is_primary = (strpos($handle, $theme_slug) !== false || strpos($handle, 'style') !== false || strpos($handle, 'theme') !== false);
 
                 $asset = [
@@ -161,14 +183,19 @@ abstract class Base
 
                 // Check strategy (defer or async) - skip if non-blocking.
                 $strategy = '';
+                $execution = '';
                 if (method_exists($wp_scripts, 'get_data')) {
                     $strategy = $wp_scripts->get_data($handle, 'strategy');
+                    $execution = $wp_scripts->get_data($handle, 'script_execution');
                 }
-                if ($strategy === 'defer' || $strategy === 'async') {
+                if (in_array($strategy, ['defer', 'async'], true) || in_array($execution, ['defer', 'async'], true)) {
                     continue;
                 }
 
-                $url = $this->resolve_asset_url($script->src, $script->ver);
+                $url = $this->resolve_asset_url($script->src, $script->ver, 'script_loader_src', $handle);
+                if (!is_string($url) || $url === '') {
+                    continue;
+                }
                 if (!in_array($url, $added_urls)) {
                     $preload_candidates[] = [
                         'url' => $url,
@@ -225,9 +252,10 @@ abstract class Base
     }
 
     /**
-     * Resolve asset source URL to absolute or relative link, appending version if present.
+     * Resolve asset source URL to absolute or relative link, appending version if present,
+     * and running through WordPress loader filters so Link headers match HTML tag href/src attributes.
      */
-    protected function resolve_asset_url($src, $ver)
+    protected function resolve_asset_url($src, $ver, string $filter = '', string $handle = '')
     {
         // If relative to WordPress root or absolute, format correctly.
         if (strpos($src, 'http') !== 0 && strpos($src, '//') !== 0) {
@@ -236,6 +264,10 @@ abstract class Base
 
         if ($ver) {
             $src = add_query_arg('ver', $ver, $src);
+        }
+
+        if ($filter !== '') {
+            $src = apply_filters($filter, $src, $handle);
         }
 
         return $src;

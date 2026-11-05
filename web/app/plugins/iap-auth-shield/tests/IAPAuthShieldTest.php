@@ -53,6 +53,7 @@ class IAPAuthShieldTest extends TestCase
 
         Actions\expectAdded('init')->once();
         Filters\expectAdded('rest_pre_dispatch')->once();
+        Filters\expectAdded('wp_insert_post_data')->once();
 
         $plugin = new Plugin();
         $this->assertInstanceOf(Plugin::class, $plugin);
@@ -74,6 +75,36 @@ class IAPAuthShieldTest extends TestCase
 
         $plugin = new Plugin();
         $this->assertInstanceOf(Plugin::class, $plugin);
+    }
+
+    public function test_register_admin_menu_calls_add_submenu_page_with_null_parent(): void
+    {
+        Functions\expect('add_submenu_page')
+            ->once()
+            ->with(
+                null,
+                'IAP Auth Shield Status',
+                'IAP Auth Shield',
+                'manage_options',
+                'iap-auth-shield',
+                Mockery::type('array'),
+            );
+
+        $plugin = new Plugin();
+        $plugin->register_admin_menu();
+        $this->assertTrue(true);
+    }
+
+    public function test_add_action_links_prepends_settings_link(): void
+    {
+        Functions\when('admin_url')->justReturn('https://example.com/wp-admin/admin.php?page=iap-auth-shield');
+
+        $plugin = new Plugin();
+        $links = ['<a href="plugins.php?action=deactivate">Deactivate</a>'];
+        $updated = $plugin->add_action_links($links);
+
+        $this->assertCount(2, $updated);
+        $this->assertStringContainsString('Settings', $updated[0]);
     }
 
     public function test_handle_iap_authentication_skips_frontend_requests(): void
@@ -245,5 +276,23 @@ class IAPAuthShieldTest extends TestCase
 
         $this->assertInstanceOf(WP_Error::class, $result);
         $this->assertSame('rest_forbidden', $result->get_error_code());
+    }
+
+    public function test_normalize_editor_urls_in_post_data_converts_current_origin_to_relative(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor-bs4ppedptq-de.a.run.app');
+        Functions\when('wp_parse_url')->justReturn('editor-bs4ppedptq-de.a.run.app');
+
+        $plugin = new Plugin();
+        $input = [
+            'post_content' => '<!-- wp:cover {"url":"https:\/\/editor-bs4ppedptq-de.a.run.app\/app\/themes\/twentytwentyfour\/assets\/images\/icon-message.webp"} --><img src="https://editor-bs4ppedptq-de.a.run.app/app/themes/twentytwentyfour/assets/images/icon-message.webp"><img src="https://storage.googleapis.com/bucket/header.webp"><!-- /wp:cover -->',
+        ];
+
+        $output = $plugin->normalize_editor_urls_in_post_data($input);
+
+        $this->assertSame(
+            '<!-- wp:cover {"url":"\/app\/themes\/twentytwentyfour\/assets\/images\/icon-message.webp"} --><img src="/app/themes/twentytwentyfour/assets/images/icon-message.webp"><img src="https://storage.googleapis.com/bucket/header.webp"><!-- /wp:cover -->',
+            $output['post_content'],
+        );
     }
 }

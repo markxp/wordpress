@@ -34,6 +34,7 @@ Purpose-built plugins developed in this codebase located in `web/app/plugins/`. 
   * *Extensibility*: Both security plugins provide independent, plugin-namespaced filter hooks (`iap_auth_shield_api_whitelist` and `security_hardening_allowed_rest_prefixes`) to allowlist custom public REST routes without cross-plugin coupling.
 * **`http-103-early-hints`** ([`web/app/plugins/http-103-early-hints/README.md`](web/app/plugins/http-103-early-hints/README.md)): Stateless generator for CDN HTTP 103 Early Hints and `Link` preload headers.
 * **`remove-wp-default-link-header`** ([`web/app/plugins/remove-wp-default-link-header/README.md`](web/app/plugins/remove-wp-default-link-header/README.md)): Cleans redundant WordPress core REST API and RSD `<link>` headers from HTTP responses.
+* **`seo-meta-description`** ([`web/app/plugins/seo-meta-description/README.md`](web/app/plugins/seo-meta-description/README.md)): Emits a clean `<meta name="description">` tag in `wp_head` using the post excerpt, block content summary, taxonomy description, or site tagline.
 
 ---
 

@@ -80,6 +80,8 @@ class BaseEngineTest extends TestCase
         Functions\when('is_admin')->justReturn(false);
         Functions\when('wp_is_json_request')->justReturn(false);
         Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(false);
+        Functions\when('get_option')->justReturn('0');
         Functions\when('site_url')->returnArg();
         Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
             return $url . '?' . $key . '=' . $val;

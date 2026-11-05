@@ -46,7 +46,7 @@ Intercepts initialization (`init` hook at priority 1) and blocks direct query pa
 
 ### 5. WP Version Hiding
 *   Removes the `<meta name="generator">` tag from HTML heads.
-*   Suppresses version query strings (`?ver=X.Y.Z` matching the core version) from script and style asset URLs.
+*   Replaces WordPress core version query strings (`?ver=X.Y.Z` matching `get_bloginfo('version')`) with a deterministic 8-character HMAC-SHA256 hash using `wp_salt('nonce')` so the core version is concealed while preserving immutable browser cache-busting across WordPress upgrades.
 *   Removes generator strings from RSS templates.
 
 ---

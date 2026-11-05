@@ -63,11 +63,23 @@ if (!class_exists('WP_Styles')) {
         public array $queue = [];
         public array $registered = [];
         public array $to_do = [];
+        private array $data = [];
 
         public function all_deps($queue): bool
         {
             $this->to_do = $this->queue;
             return true;
+        }
+
+        public function add_data(string $handle, string $key, $value): bool
+        {
+            $this->data[$handle][$key] = $value;
+            return true;
+        }
+
+        public function get_data(string $handle, string $key)
+        {
+            return $this->data[$handle][$key] ?? null;
         }
     }
 }
@@ -108,3 +120,4 @@ require_once dirname(__DIR__) . '/web/app/plugins/security-hardening/src/Plugin.
 require_once dirname(__DIR__) . '/web/app/plugins/iap-auth-shield/src/class-iap-auth-shield.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-base.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-http-103-early-hints.php';
+require_once dirname(__DIR__) . '/web/app/plugins/seo-meta-description/src/class-seo-meta-description.php';

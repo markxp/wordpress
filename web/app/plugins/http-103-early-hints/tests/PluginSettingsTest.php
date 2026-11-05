@@ -27,11 +27,12 @@ class PluginSettingsTest extends TestCase
         $this->assertInstanceOf(Plugin::class, $plugin);
     }
 
-    public function test_register_admin_settings_page_calls_add_options_page(): void
+    public function test_register_admin_settings_page_calls_add_submenu_page(): void
     {
-        Functions\expect('add_options_page')
+        Functions\expect('add_submenu_page')
             ->once()
             ->with(
+                null,
                 'HTTP 103 Early Hints Configuration & Status',
                 'HTTP 103 Early Hints',
                 'manage_options',
@@ -57,13 +58,27 @@ class PluginSettingsTest extends TestCase
 
     public function test_add_action_links_prepends_settings_link(): void
     {
-        Functions\when('admin_url')->justReturn('https://example.com/wp-admin/options-general.php?page=hlhg-settings');
+        Functions\when('admin_url')->justReturn('https://example.com/wp-admin/admin.php?page=hlhg-settings');
 
         $plugin = new Plugin();
         $links = ['<a href="plugins.php?action=deactivate">Deactivate</a>'];
         $updated = $plugin->add_action_links($links);
 
         $this->assertCount(2, $updated);
-        $this->assertStringContainsString('Settings & Status', $updated[0]);
+        $this->assertStringContainsString('Settings', $updated[0]);
+    }
+
+    public function test_render_inline_size_limit_field_outputs_step_1000_and_regular_text(): void
+    {
+        Functions\when('get_option')->justReturn('0');
+
+        $plugin = new Plugin();
+        ob_start();
+        $plugin->render_inline_size_limit_field();
+        $html = (string) ob_get_clean();
+
+        $this->assertStringContainsString('step="1000"', $html);
+        $this->assertStringContainsString('class="regular-text"', $html);
+        $this->assertStringContainsString('value="0"', $html);
     }
 }

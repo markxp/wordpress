@@ -10,6 +10,7 @@ A WordPress plugin to provide identity-aware authentication and a REST API firew
   - Protects sensitive API endpoints.
   - Whitelists common read-only endpoints (Posts, Pages, Categories, Tags, Media, Taxonomies, Types) for external visitors.
   - Special bypass for comments to allow external POST/GET requests.
+- **Editor Origin Normalization**: Strips the internal IAP-protected Editor origin (`home_url()`) from local `/app/` and `/wp/` URLs (both HTML attributes and JSON-escaped Gutenberg block attributes) when saving post content so internal Cloud Run hostnames never leak to public readers.
 - **Stateless Configuration**: Controlled entirely via system environment variables.
 
 ## Configuration

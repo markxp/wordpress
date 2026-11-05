@@ -28,11 +28,12 @@ class Plugin extends Base
     }
 
     /**
-     * Register the admin settings page under Settings.
+     * Register the admin settings page without displaying it in the sidebar menu.
      */
     public function register_admin_settings_page()
     {
-        add_options_page(
+        add_submenu_page(
+            null,
             'HTTP 103 Early Hints Configuration & Status',
             'HTTP 103 Early Hints',
             'manage_options',
@@ -46,8 +47,8 @@ class Plugin extends Base
      */
     public function add_action_links($links)
     {
-        $status_link = '<a href="' . esc_url(admin_url('options-general.php?page=hlhg-settings')) . '">Settings & Status</a>';
-        array_unshift($links, $status_link);
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=hlhg-settings')) . '">' . __('Settings') . '</a>';
+        array_unshift($links, $settings_link);
         return $links;
     }
 
@@ -79,7 +80,7 @@ class Plugin extends Base
         register_setting('hlhg_settings_group', 'hlhg_inline_size_limit', [
             'type'              => 'integer',
             'sanitize_callback' => 'intval',
-            'default'           => 0,
+            'default'           => self::DEFAULT_INLINE_SIZE_LIMIT,
         ]);
 
         // Section 1: General Performance Settings
@@ -146,10 +147,10 @@ class Plugin extends Base
      */
     public function render_inline_size_limit_field()
     {
-        $value = get_option('hlhg_inline_size_limit', '0');
-        echo '<input type="number" min="0" name="hlhg_inline_size_limit" value="' . esc_attr($value) . '" class="small-text" />';
+        $value = get_option('hlhg_inline_size_limit', (string) self::DEFAULT_INLINE_SIZE_LIMIT);
+        echo '<input type="number" min="0" step="1000" name="hlhg_inline_size_limit" value="' . esc_attr((string) $value) . '" class="regular-text" />';
         echo ' Bytes';
-        echo '<p class="description"><strong>CSS Inlining Threshold:</strong> The maximum size of any enqueued stylesheet allowed to be injected directly inside the HTML head. Setting this to <code>0</code> disables inlining entirely, forcing all stylesheets to load as external files. This allows CDNs and browsers to cache the stylesheets and preload them early using HTTP 103 Early Hints.</p>';
+        echo '<p class="description"><strong>CSS Inlining Threshold:</strong> The maximum cumulative size (in bytes) of small block stylesheets allowed to be inlined directly into the HTML <code>&lt;head&gt;</code> (default: <code>0</code>, scaled in increments of <code>1000</code> bytes). Setting this to <code>0</code> disables inlining entirely, forcing all stylesheets to load as external files that CDNs and browsers can cache and preload using HTTP 103 Early Hints.</p>';
     }
 
     /**

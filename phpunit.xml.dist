@@ -23,6 +23,9 @@
         <testsuite name="http-103-early-hints">
             <directory>web/app/plugins/http-103-early-hints/tests</directory>
         </testsuite>
+        <testsuite name="seo-meta-description">
+            <directory>web/app/plugins/seo-meta-description/tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -30,6 +33,7 @@
             <directory suffix=".php">web/app/plugins/security-hardening/src</directory>
             <directory suffix=".php">web/app/plugins/iap-auth-shield/src</directory>
             <directory suffix=".php">web/app/plugins/http-103-early-hints/src</directory>
+            <directory suffix=".php">web/app/plugins/seo-meta-description/src</directory>
         </include>
     </source>
 </phpunit>

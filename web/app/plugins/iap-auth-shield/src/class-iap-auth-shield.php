@@ -49,6 +49,9 @@ class Plugin
 
             // Hook 2: REST API Firewall (Intercept before API dispatch)
             add_filter('rest_pre_dispatch', [$this, 'api_firewall'], 10, 3);
+
+            // Hook 3: Normalize internal Editor domain URLs (/app/..., /wp/...) to root-relative paths on save
+            add_filter('wp_insert_post_data', [$this, 'normalize_editor_urls_in_post_data'], 10, 2);
         }
     }
 
@@ -78,11 +81,12 @@ class Plugin
     }
 
     /**
-     * Register Settings Menu item.
+     * Register admin page without displaying it in the sidebar menu.
      */
     public function register_admin_menu()
     {
-        add_options_page(
+        add_submenu_page(
+            null,
             'IAP Auth Shield Status',
             'IAP Auth Shield',
             'manage_options',
@@ -92,12 +96,12 @@ class Plugin
     }
 
     /**
-     * Add Settings/Status link on Plugins list page.
+     * Add Settings link on Plugins list page.
      */
     public function add_action_links($links)
     {
-        $status_link = '<a href="' . esc_url(admin_url('options-general.php?page=iap-auth-shield')) . '">Status & Settings</a>';
-        array_unshift($links, $status_link);
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=iap-auth-shield')) . '">' . __('Settings') . '</a>';
+        array_unshift($links, $settings_link);
         return $links;
     }
 
@@ -291,6 +295,47 @@ class Plugin
             'No permission to access this API endpoint.',
             ['status' => 401],
         );
+    }
+
+    /**
+     * Core Logic 3: Strip internal Editor origin (home_url()) from local /app/ and /wp/ asset URLs
+     * when saving posts, pages, templates, or patterns in the Editor service.
+     *
+     * @param array $data    An array of slashed, sanitized, and processed post data.
+     * @param array $postarr An array of sanitized (and slashed) but otherwise unmodified post data.
+     * @return array Filtered post data with root-relative local asset URLs.
+     */
+    public function normalize_editor_urls_in_post_data($data, $postarr = [])
+    {
+        if (!is_array($data) || empty($data['post_content']) || !is_string($data['post_content'])) {
+            return $data;
+        }
+
+        $data['post_content'] = $this->strip_current_origin_from_local_paths($data['post_content']);
+
+        return $data;
+    }
+
+    /**
+     * Replace http(s)://<current-request-host>/(app|wp)/... with /(app|wp)/...
+     * Preserves both standard slashes and JSON-escaped slashes in Gutenberg block attributes.
+     */
+    public function strip_current_origin_from_local_paths(string $content): string
+    {
+        $home_url = function_exists('home_url') ? rtrim((string) home_url(), '/') : '';
+        if ($home_url === '') {
+            return $content;
+        }
+
+        $host = wp_parse_url($home_url, PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            return $content;
+        }
+
+        $quoted_host = preg_quote($host, '#');
+        $pattern = '#https?:(?:\\\\)*/(?:\\\\)*/' . $quoted_host . '(?::\d+)?((?:\\\\)*/(?:app|wp)(?:\\\\)*/)#i';
+
+        return (string) preg_replace($pattern, '$1', $content);
     }
 
     protected function get_google_iap_keys()

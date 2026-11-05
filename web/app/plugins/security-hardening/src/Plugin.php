@@ -76,11 +76,12 @@ class Plugin
     }
 
     /**
-     * Register Settings Menu item.
+     * Register admin page without displaying it in the sidebar menu.
      */
     public function register_admin_menu()
     {
-        add_options_page(
+        add_submenu_page(
+            null,
             'Security Hardening Status',
             'Security Hardening',
             'manage_options',
@@ -90,12 +91,12 @@ class Plugin
     }
 
     /**
-     * Add Settings/Status link on Plugins list page.
+     * Add Settings link on Plugins list page.
      */
     public function add_action_links($links)
     {
-        $status_link = '<a href="' . esc_url(admin_url('options-general.php?page=security-hardening')) . '">Status & Settings</a>';
-        array_unshift($links, $status_link);
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=security-hardening')) . '">' . __('Settings') . '</a>';
+        array_unshift($links, $settings_link);
         return $links;
     }
 
@@ -337,13 +338,23 @@ class Plugin
     }
 
     /**
-     * Strip '?ver=X.Y.Z' query parameter from script and style asset links.
+     * Replace '?ver=X.Y.Z' matching the WordPress core version with a deterministic 8-char HMAC hash
+     * so the core version is hidden while preserving immutable browser cache-busting across upgrades.
      */
     public function remove_wp_ver_from_assets($src)
     {
-        if (is_string($src) && str_contains($src, 'ver=' . get_bloginfo('version'))) {
-            $src = remove_query_arg('ver', $src);
+        if (!is_string($src) || $src === '') {
+            return $src;
         }
+
+        $wp_ver = (string) get_bloginfo('version');
+        if ($wp_ver !== '' && str_contains($src, 'ver=' . $wp_ver)) {
+            $salt = function_exists('wp_salt') ? (string) wp_salt('nonce') : (defined('NONCE_SALT') ? (string) NONCE_SALT : '');
+            $hash = substr(hash_hmac('sha256', $wp_ver, $salt), 0, 8);
+            $src = remove_query_arg('ver', $src);
+            $src = add_query_arg('ver', $hash, $src);
+        }
+
         return $src;
     }
 

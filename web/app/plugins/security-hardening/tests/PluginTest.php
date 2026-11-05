@@ -91,11 +91,16 @@ class PluginTest extends TestCase
         $this->assertSame($vars, $filtered);
     }
 
-    public function test_remove_wp_ver_from_assets_removes_version_string(): void
+    public function test_remove_wp_ver_from_assets_hashes_core_version_string(): void
     {
         Functions\when('get_bloginfo')->justReturn('6.8.0');
+        Functions\when('wp_salt')->justReturn('test-nonce-salt');
         Functions\when('remove_query_arg')->alias(function ($key, $url) {
-            return preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&]*(&?)/', '$1', $url);
+            return preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&]*(&?)/', '', $url);
+        });
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            $sep = str_contains($url, '?') ? '&' : '?';
+            return $url . $sep . $key . '=' . $val;
         });
 
         $plugin = new Plugin();
@@ -103,6 +108,11 @@ class PluginTest extends TestCase
         $cleaned = $plugin->remove_wp_ver_from_assets($src);
 
         $this->assertStringNotContainsString('ver=6.8.0', $cleaned);
+        $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}$/', $cleaned);
+
+        // Plugin and third-party versions are left untouched
+        $pluginSrc = 'https://example.com/app/plugins/custom/app.js?ver=1.2.3';
+        $this->assertSame($pluginSrc, $plugin->remove_wp_ver_from_assets($pluginSrc));
     }
 
     public function test_restrict_rest_api_allows_logged_in_users(): void
@@ -202,11 +212,12 @@ class PluginTest extends TestCase
         unset($_GET['rest_route']);
     }
 
-    public function test_register_admin_menu_calls_add_options_page(): void
+    public function test_register_admin_menu_calls_add_submenu_page(): void
     {
-        Functions\expect('add_options_page')
+        Functions\expect('add_submenu_page')
             ->once()
             ->with(
+                null,
                 'Security Hardening Status',
                 'Security Hardening',
                 'manage_options',
@@ -219,15 +230,15 @@ class PluginTest extends TestCase
         $this->assertTrue(true);
     }
 
-    public function test_add_action_links_prepends_status_link(): void
+    public function test_add_action_links_prepends_settings_link(): void
     {
-        Functions\when('admin_url')->justReturn('https://example.com/wp-admin/options-general.php?page=security-hardening');
+        Functions\when('admin_url')->justReturn('https://example.com/wp-admin/admin.php?page=security-hardening');
 
         $plugin = new Plugin();
         $links = ['<a href="plugins.php?action=deactivate">Deactivate</a>'];
         $updated = $plugin->add_action_links($links);
 
         $this->assertCount(2, $updated);
-        $this->assertStringContainsString('Status & Settings', $updated[0]);
+        $this->assertStringContainsString('Settings', $updated[0]);
     }
 }
