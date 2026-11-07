@@ -77,12 +77,12 @@ class IAPAuthShieldTest extends TestCase
         $this->assertInstanceOf(Plugin::class, $plugin);
     }
 
-    public function test_register_admin_menu_calls_add_submenu_page_with_null_parent(): void
+    public function test_register_admin_menu_calls_add_submenu_page_with_hidden_parent(): void
     {
         Functions\expect('add_submenu_page')
             ->once()
             ->with(
-                null,
+                'options.php',
                 'IAP Auth Shield Status',
                 'IAP Auth Shield',
                 'manage_options',
@@ -406,5 +406,23 @@ class IAPAuthShieldTest extends TestCase
         ]);
 
         $this->assertSame($expected, $output);
+    }
+
+    public function test_normalize_editor_urls_handles_wp_slashed_json_block_attributes(): void
+    {
+        Functions\when('home_url')->justReturn('https://editor-bs4ppedptq-de.a.run.app:8443/');
+        Functions\when('wp_parse_url')->alias(static function (string $url, int $component = -1) {
+            return parse_url($url, $component);
+        });
+
+        $plugin = new Plugin();
+        // Simulate wp_slash() applied by wp_insert_post() before wp_insert_post_data filter runs
+        $slashedContent = '<!-- wp:cover {\"url\":\"https:\\/\\/editor-bs4ppedptq-de.a.run.app:8443\\/app\\/themes\\/twentytwentyfour\\/assets\\/hero.webp\"} -->';
+        $output = $plugin->normalize_editor_urls_in_post_data(['post_content' => $slashedContent]);
+
+        $this->assertSame(
+            '<!-- wp:cover {\"url\":\"\\/app\\/themes\\/twentytwentyfour\\/assets\\/hero.webp\"} -->',
+            $output['post_content'],
+        );
     }
 }

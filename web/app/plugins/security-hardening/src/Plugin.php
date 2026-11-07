@@ -81,7 +81,7 @@ class Plugin
     public function register_admin_menu()
     {
         add_submenu_page(
-            null,
+            'options.php',
             'Security Hardening Status',
             'Security Hardening',
             'manage_options',
@@ -348,7 +348,7 @@ class Plugin
         }
 
         $wp_ver = (string) get_bloginfo('version');
-        if ($wp_ver !== '' && str_contains($src, 'ver=' . $wp_ver)) {
+        if ($wp_ver !== '' && preg_match('/[?&]ver=' . preg_quote($wp_ver, '/') . '(?:$|&|#)/', $src) === 1) {
             $salt = function_exists('wp_salt') ? (string) wp_salt('nonce') : (defined('NONCE_SALT') ? (string) NONCE_SALT : '');
             $hash = substr(hash_hmac('sha256', $wp_ver, $salt), 0, 8);
             $src = remove_query_arg('ver', $src);

@@ -33,7 +33,7 @@ class Plugin extends Base
     public function register_admin_settings_page()
     {
         add_submenu_page(
-            null,
+            'options.php',
             'HTTP 103 Early Hints Configuration & Status',
             'HTTP 103 Early Hints',
             'manage_options',

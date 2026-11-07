@@ -176,6 +176,39 @@ class PluginTest extends TestCase
         $this->assertMatchesRegularExpression('/&ver=[a-f0-9]{8}/', $cleaned);
     }
 
+    public function test_remove_wp_ver_from_assets_avoids_prefix_and_param_name_collisions_and_handles_fragments(): void
+    {
+        Functions\when('get_bloginfo')->justReturn('6.8');
+        Functions\when('wp_salt')->justReturn('test-salt');
+        Functions\when('remove_query_arg')->alias(function ($key, $url) {
+            return preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&#]*(&?)/', '', $url);
+        });
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            if (str_contains($url, '#')) {
+                [$base, $frag] = explode('#', $url, 2);
+                $sep = str_contains($base, '?') ? '&' : '?';
+                return $base . $sep . $key . '=' . $val . '#' . $frag;
+            }
+            $sep = str_contains($url, '?') ? '&' : '?';
+            return $url . $sep . $key . '=' . $val;
+        });
+
+        $plugin = new Plugin();
+
+        // 1. Plugin version '6.8.2' must NOT match when core version is '6.8'
+        $pluginPatchVer = 'https://example.com/app/plugins/foo/app.js?ver=6.8.2';
+        $this->assertSame($pluginPatchVer, $plugin->remove_wp_ver_from_assets($pluginPatchVer));
+
+        // 2. Query parameter ending in 'ver=' ('?server=6.8') must NOT match 'ver=6.8'
+        $paramCollision = 'https://example.com/app/plugins/foo/app.js?server=6.8';
+        $this->assertSame($paramCollision, $plugin->remove_wp_ver_from_assets($paramCollision));
+
+        // 3. Exact core version followed by URL fragment ('?ver=6.8#icon') MUST be hashed
+        $withFragment = 'https://example.com/wp-includes/images/sprite.svg?ver=6.8#icon';
+        $cleanedFragment = $plugin->remove_wp_ver_from_assets($withFragment);
+        $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}#icon$/', $cleanedFragment);
+    }
+
     public function test_restrict_rest_api_allows_logged_in_users(): void
     {
         Functions\when('is_user_logged_in')->justReturn(true);
@@ -342,7 +375,7 @@ class PluginTest extends TestCase
         Functions\expect('add_submenu_page')
             ->once()
             ->with(
-                null,
+                'options.php',
                 'Security Hardening Status',
                 'Security Hardening',
                 'manage_options',

@@ -86,7 +86,7 @@ class Plugin
     public function register_admin_menu()
     {
         add_submenu_page(
-            null,
+            'options.php',
             'IAP Auth Shield Status',
             'IAP Auth Shield',
             'manage_options',

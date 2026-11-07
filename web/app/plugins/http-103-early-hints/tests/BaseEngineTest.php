@@ -436,4 +436,59 @@ class BaseEngineTest extends TestCase
         $this->assertNotNull($instance->emittedHeader);
         $this->assertStringContainsString('missing.css', $instance->emittedHeader);
     }
+
+    public function test_inspect_and_emit_link_headers_skips_do_action_when_wp_enqueue_scripts_already_did(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(1);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+
+        Actions\expectDone('wp_enqueue_scripts')->never();
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNull($instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_formats_crossorigin_attribute_variants(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(1);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+
+        Filters\expectApplied('wp_preload_resources')
+            ->once()
+            ->andReturn([
+                ['href' => 'https://example.com/a.woff2', 'as' => 'font', 'crossorigin' => true],
+                ['href' => 'https://example.com/b.woff2', 'as' => 'font', 'crossorigin' => 'anonymous'],
+                ['href' => 'https://example.com/c.woff2', 'as' => 'font', 'crossorigin' => 'use-credentials'],
+            ]);
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertSame(
+            '<https://example.com/a.woff2>; rel=preload; as=font; crossorigin, '
+            . '<https://example.com/b.woff2>; rel=preload; as=font; crossorigin, '
+            . '<https://example.com/c.woff2>; rel=preload; as=font; crossorigin=use-credentials',
+            $instance->emittedHeader,
+        );
+    }
 }

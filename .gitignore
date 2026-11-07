@@ -6,6 +6,7 @@ web/app/plugins/*
 !web/app/plugins/remove-wp-default-link-header/
 !web/app/plugins/http-103-early-hints/
 !web/app/plugins/security-hardening/
+!web/app/plugins/seo-meta-description/
 web/app/uploads/*
 !web/app/uploads/.gitkeep
 web/app/mu-plugins/*

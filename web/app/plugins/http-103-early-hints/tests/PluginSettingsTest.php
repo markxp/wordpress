@@ -32,7 +32,7 @@ class PluginSettingsTest extends TestCase
         Functions\expect('add_submenu_page')
             ->once()
             ->with(
-                null,
+                'options.php',
                 'HTTP 103 Early Hints Configuration & Status',
                 'HTTP 103 Early Hints',
                 'manage_options',
