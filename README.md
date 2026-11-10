@@ -68,9 +68,22 @@ WordPress requires canonical home and site URLs. In this repository, URL resolut
    WP_SITEURL=${WP_HOME}/wp # optional, defaults to ${WP_HOME}/wp
    ```
 
-### Serverless Optimization & Background Jobs
-* **`DISABLE_WP_CRON=true`**: **Serverless Best Practice**. Native WP-Cron triggers opportunistically on visitor HTTP requests. On serverless platforms (like Cloud Run), pods scale to zero (causing scheduled tasks to be missed) or scale out concurrently (causing cron tasks to run multiple duplicate times across pods). Disabling native cron and triggering `wp-cron.php` externally via **Google Cloud Scheduler** or a deterministic Linux cron runner ensures reliable, single-execution scheduling.
+### Serverless Optimization & Background Jobs (`DISABLE_WP_CRON=true`)
+* **`DISABLE_WP_CRON=true`**: **Serverless Best Practice**. Native WP-Cron triggers opportunistically on visitor HTTP requests (`POST /wp/wp-cron.php`), which fails or stalls on Cloud Run due to request-scoped CPU throttling, scale-to-zero behavior, and IAP/CDN walls.
 * **`WP_POST_REVISIONS`**: Integer limit on post revisions (e.g. `5` or `10`) to prevent database table bloat on managed relational databases.
+
+> [!WARNING]
+> **Database Maintenance & Cron Queue Bloat When `DISABLE_WP_CRON=true`**:
+> Even when native visitor-triggered WP-Cron is disabled, WordPress Core and plugins (`google-site-kit`, `wp-stateless`) still enqueue scheduled jobs into the autoloaded `cron` option in `wp_options`. If nothing executes `/wp/wp-cron.php`:
+> 1. **Autoloaded `wp_options` Bloat**: One-off expired transients (`delete_expired_transients`) and unexecuted single-event cron entries accumulate indefinitely in `wp_options`, increasing memory usage on every page load.
+> 2. **Stale `wp_posts` Rows**: 7-day `auto-draft` cleanup (`wp_scheduled_auto_draft_delete`) and 30-day Trash purging (`wp_scheduled_delete`) never run.
+> 3. **Missed Scheduled Posts & Plugin Syncs**: Scheduled future posts (`publish_future_post`) and background Site Kit / WP-Stateless synchronization tasks will stall.
+>
+> **Required Production Setup (Google Cloud Scheduler → Editor Service)**:
+> Configure a **Google Cloud Scheduler** job (e.g. every `15` or `60` minutes: `*/15 * * * *`) to trigger `/wp/wp-cron.php` on the **Editor Service** (never the read-only Reader service):
+> - **Target URL**: `https://<editor-domain>/wp/wp-cron.php?doing_wp_cron`
+> - **HTTP Method**: `GET` (or `POST`)
+> - **Authentication (Behind IAP)**: Select **Add OIDC token**, specify a dedicated scheduler Service Account, set the **Audience** to your IAP OAuth2 Client ID (`IAP_AUDIENCE`), and grant that Service Account the `roles/iap.httpsResourceAccessor` (IAP-secured Web App User) role on the Editor backend service. (`iap-auth-shield` only enforces WordPress user mapping on `/wp-admin` and `wp-login.php`, allowing IAP-authenticated Cloud Scheduler requests to execute `/wp/wp-cron.php` directly.)
 
 ### Environment & Database Settings
 * `WP_ENV`: Environment identifier (`development`, `staging`, `production`, `local`).
