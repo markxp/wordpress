@@ -447,6 +447,30 @@ class BaseEngineTest extends TestCase
         Functions\when('site_url')->returnArg();
 
         Actions\expectDone('wp_enqueue_scripts')->never();
+        Actions\expectRemoved('wp_head')->never();
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNull($instance->emittedHeader);
+    }
+
+    public function test_inspect_and_emit_link_headers_unhooks_wp_enqueue_scripts_from_wp_head_when_triggered(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(0);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+
+        Actions\expectDone('wp_enqueue_scripts')->once();
+        Actions\expectRemoved('wp_head')->once()->with('wp_enqueue_scripts', 1);
 
         global $wp_styles, $wp_scripts;
         $wp_styles = new WP_Styles();

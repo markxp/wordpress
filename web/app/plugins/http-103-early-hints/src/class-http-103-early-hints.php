@@ -73,7 +73,7 @@ class Plugin extends Base
     {
         register_setting('hlhg_settings_group', 'hlhg_load_separate_assets', [
             'type'              => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
+            'sanitize_callback' => [$this, 'sanitize_checkbox_setting'],
             'default'           => '1',
         ]);
 
@@ -114,6 +114,14 @@ class Plugin extends Base
             'hlhg-settings',
             'hlhg_block_theme_section',
         );
+    }
+
+    /**
+     * Sanitize checkbox option to explicit '1' or '0' string so unchecked state persists reliably.
+     */
+    public function sanitize_checkbox_setting($value): string
+    {
+        return (!empty($value) && $value !== '0' && $value !== 'false') ? '1' : '0';
     }
 
     /**

@@ -132,6 +132,16 @@ if (env('GOOGLESITEKIT_ENCRYPTION_SALT')) {
 }
 
 /**
+ * GCP IAP Auth & API Shield Settings
+ */
+if (env('IAP_AUTH_ENABLED') !== null) {
+    Config::define('IAP_AUTH_ENABLED', (bool) env('IAP_AUTH_ENABLED'));
+}
+if (env('IAP_AUDIENCE')) {
+    Config::define('IAP_AUDIENCE', env('IAP_AUDIENCE'));
+}
+
+/**
  * Custom Settings
  */
 Config::define('AUTOMATIC_UPDATER_DISABLED', true);

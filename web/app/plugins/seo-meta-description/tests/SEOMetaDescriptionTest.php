@@ -40,6 +40,7 @@ class SEOMetaDescriptionTest extends TestCase
         Functions\when('is_front_page')->justReturn(false);
         Functions\when('is_home')->justReturn(false);
         Functions\when('is_singular')->justReturn(true);
+        Functions\when('get_option')->justReturn('0');
         Functions\when('get_queried_object')->justReturn((object) [
             'post_excerpt' => '',
             'post_content' => '<p>Welcome to our documentation portal. Explore architecture guides and tutorials.</p>',
@@ -74,6 +75,7 @@ class SEOMetaDescriptionTest extends TestCase
         Functions\when('is_front_page')->justReturn(false);
         Functions\when('is_home')->justReturn(false);
         Functions\when('is_singular')->justReturn(true);
+        Functions\when('get_option')->justReturn('0');
         Functions\when('get_queried_object')->justReturn((object) [
             'post_excerpt' => 'Explicit manual summary for this post.',
             'post_content' => '<p>Full content body that should not be used when excerpt exists.</p>',
@@ -199,5 +201,112 @@ class SEOMetaDescriptionTest extends TestCase
         $output = (string) ob_get_clean();
 
         $this->assertSame('', $output);
+    }
+
+    public function test_resolve_description_slices_very_long_post_content_at_block_boundary_before_parsing(): void
+    {
+        Functions\when('is_404')->justReturn(false);
+        Functions\when('is_front_page')->justReturn(false);
+        Functions\when('is_home')->justReturn(false);
+        Functions\when('is_singular')->justReturn(true);
+        Functions\when('get_option')->justReturn('0');
+
+        // Build content > 4096 bytes with Gutenberg blocks
+        $firstBlock = '<!-- wp:paragraph --><p>Lead summary paragraph that should be extracted cleanly.</p><!-- /wp:paragraph -->';
+        $paddingBlock = '<!-- wp:paragraph --><p>' . str_repeat('Padding text content. ', 200) . '</p><!-- /wp:paragraph -->';
+        $tailBlock = '<!-- wp:paragraph --><p>' . str_repeat('Tail content that should be sliced off before block parsing. ', 200) . '</p><!-- /wp:paragraph -->';
+        $longContent = $firstBlock . $paddingBlock . $tailBlock;
+
+        Functions\when('get_queried_object')->justReturn((object) [
+            'ID' => 101,
+            'post_excerpt' => '',
+            'post_content' => $longContent,
+        ]);
+
+        $capturedInputLength = 0;
+        Functions\when('excerpt_remove_blocks')->alias(static function (string $text) use (&$capturedInputLength): string {
+            $capturedInputLength = strlen($text);
+            return $text;
+        });
+        Functions\when('strip_shortcodes')->returnArg();
+        Functions\when('wp_strip_all_tags')->alias(static fn (string $str): string => strip_tags($str));
+
+        $plugin = new Plugin();
+        $resolved = $plugin->resolve_description();
+
+        $this->assertGreaterThan(Plugin::CONTENT_SLICE_BYTES, strlen($longContent));
+        $this->assertLessThan(strlen($longContent), $capturedInputLength);
+        $this->assertStringStartsWith('Lead summary paragraph that should be extracted cleanly.', $resolved);
+    }
+
+    public function test_resolve_description_uses_object_cache_when_toggle_enabled(): void
+    {
+        Functions\when('is_404')->justReturn(false);
+        Functions\when('is_front_page')->justReturn(false);
+        Functions\when('is_home')->justReturn(false);
+        Functions\when('is_singular')->justReturn(true);
+        Functions\when('get_option')->justReturn('1'); // Object cache toggle ON
+        Functions\when('get_queried_object')->justReturn((object) [
+            'ID' => 55,
+            'post_modified_gmt' => '2026-11-10 12:00:00',
+            'post_excerpt' => 'Uncached excerpt fallback.',
+            'post_content' => '',
+        ]);
+
+        // 1. Cache hit returns cached description directly without stripping/recomputing
+        Functions\expect('wp_cache_get')
+            ->once()
+            ->with('post_desc_55_' . md5('2026-11-10 12:00:00'), Plugin::CACHE_GROUP)
+            ->andReturn('Cached description from APCu or Redis.');
+        Functions\expect('wp_cache_set')->never();
+
+        $plugin = new Plugin();
+        $this->assertSame('Cached description from APCu or Redis.', $plugin->resolve_description());
+    }
+
+    public function test_resolve_description_stores_in_object_cache_on_cache_miss_when_toggle_enabled(): void
+    {
+        Functions\when('is_404')->justReturn(false);
+        Functions\when('is_front_page')->justReturn(false);
+        Functions\when('is_home')->justReturn(false);
+        Functions\when('is_singular')->justReturn(true);
+        Functions\when('get_option')->justReturn('1'); // Object cache toggle ON
+        Functions\when('get_queried_object')->justReturn((object) [
+            'ID' => 77,
+            'post_modified_gmt' => '2026-11-10 15:00:00',
+            'post_excerpt' => 'Freshly computed post description.',
+            'post_content' => '',
+        ]);
+        Functions\when('wp_strip_all_tags')->returnArg();
+
+        $expectedKey = 'post_desc_77_' . md5('2026-11-10 15:00:00');
+        Functions\expect('wp_cache_get')
+            ->once()
+            ->with($expectedKey, Plugin::CACHE_GROUP)
+            ->andReturn(false);
+        Functions\expect('wp_cache_set')
+            ->once()
+            ->with($expectedKey, 'Freshly computed post description.', Plugin::CACHE_GROUP, HOUR_IN_SECONDS)
+            ->andReturn(true);
+
+        $plugin = new Plugin();
+        $this->assertSame('Freshly computed post description.', $plugin->resolve_description());
+    }
+
+    public function test_admin_settings_hooks_and_checkbox_sanitization(): void
+    {
+        Functions\when('is_admin')->justReturn(true);
+        Functions\when('plugin_basename')->justReturn('seo-meta-description/seo-meta-description.php');
+
+        Actions\expectAdded('wp_head')->once();
+        Actions\expectAdded('admin_menu')->once();
+        Actions\expectAdded('admin_init')->once();
+        \Brain\Monkey\Filters\expectAdded('plugin_action_links_seo-meta-description/seo-meta-description.php')->once();
+        Actions\expectAdded('after_plugin_row_seo-meta-description/seo-meta-description.php')->once();
+
+        $plugin = new Plugin();
+        $this->assertSame('1', $plugin->sanitize_checkbox_setting('1'));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting(null));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting('0'));
     }
 }

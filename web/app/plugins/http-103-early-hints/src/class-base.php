@@ -73,8 +73,10 @@ abstract class Base
 
         // 1. Trigger the standard scripts and styles enqueuing hooks early.
         // This populates the $wp_styles->queue and $wp_scripts->queue.
+        // Unhook wp_enqueue_scripts from wp_head afterwards so callbacks and inline styles do not execute twice.
         if (!did_action('wp_enqueue_scripts')) {
             do_action('wp_enqueue_scripts');
+            remove_action('wp_head', 'wp_enqueue_scripts', 1);
         }
 
         // 2. Resolve all dependencies so we get the complete list of assets that will be printed.

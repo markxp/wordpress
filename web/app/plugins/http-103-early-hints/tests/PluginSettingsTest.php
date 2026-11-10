@@ -81,4 +81,17 @@ class PluginSettingsTest extends TestCase
         $this->assertStringContainsString('class="regular-text"', $html);
         $this->assertStringContainsString('value="0"', $html);
     }
+
+    public function test_sanitize_checkbox_setting_normalizes_checked_and_unchecked_values(): void
+    {
+        $plugin = new Plugin();
+
+        $this->assertSame('1', $plugin->sanitize_checkbox_setting('1'));
+        $this->assertSame('1', $plugin->sanitize_checkbox_setting(true));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting(null));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting(''));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting('0'));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting('false'));
+        $this->assertSame('0', $plugin->sanitize_checkbox_setting(false));
+    }
 }

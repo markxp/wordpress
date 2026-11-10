@@ -14,24 +14,8 @@ use WP_Error;
 
 class PluginTest extends TestCase
 {
-    public function test_env_enabled_detection(): void
+    public function test_hooks_registered_on_instantiation(): void
     {
-        putenv('SECURITY_HARDENING_ENABLED=false');
-        $plugin = new Plugin();
-        $this->assertFalse($plugin->is_env_enabled());
-        $this->assertFalse($plugin->is_instance_on());
-
-        putenv('SECURITY_HARDENING_ENABLED=true');
-        $plugin = new Plugin();
-        $this->assertTrue($plugin->is_env_enabled());
-        $this->assertTrue($plugin->is_instance_on());
-
-        putenv('SECURITY_HARDENING_ENABLED'); // unset
-    }
-
-    public function test_hooks_registered_when_instance_on(): void
-    {
-        putenv('SECURITY_HARDENING_ENABLED=true');
         Functions\when('is_admin')->justReturn(false);
 
         Actions\expectAdded('init')->once();
@@ -50,13 +34,10 @@ class PluginTest extends TestCase
 
         $plugin = new Plugin();
         $this->assertInstanceOf(Plugin::class, $plugin);
-
-        putenv('SECURITY_HARDENING_ENABLED');
     }
 
     public function test_admin_hooks_registered_when_is_admin(): void
     {
-        putenv('SECURITY_HARDENING_ENABLED=false');
         Functions\when('is_admin')->justReturn(true);
         Functions\when('plugin_basename')->justReturn('security-hardening/security-hardening.php');
 
@@ -207,6 +188,26 @@ class PluginTest extends TestCase
         $withFragment = 'https://example.com/wp-includes/images/sprite.svg?ver=6.8#icon';
         $cleanedFragment = $plugin->remove_wp_ver_from_assets($withFragment);
         $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}#icon$/', $cleanedFragment);
+    }
+
+    public function test_remove_wp_ver_from_assets_memoizes_version_and_hash_across_multiple_assets(): void
+    {
+        Functions\expect('get_bloginfo')->once()->with('version')->andReturn('6.8.0');
+        Functions\expect('wp_salt')->once()->with('nonce')->andReturn('memoized-salt');
+        Functions\when('remove_query_arg')->alias(function ($key, $url) {
+            return preg_replace('/([?&])' . preg_quote($key, '/') . '=[^&]*(&?)/', '', $url);
+        });
+        Functions\when('add_query_arg')->alias(function ($key, $val, $url) {
+            $sep = str_contains($url, '?') ? '&' : '?';
+            return $url . $sep . $key . '=' . $val;
+        });
+
+        $plugin = new Plugin();
+        $first = $plugin->remove_wp_ver_from_assets('https://example.com/wp-includes/a.css?ver=6.8.0');
+        $second = $plugin->remove_wp_ver_from_assets('https://example.com/wp-includes/b.js?ver=6.8.0');
+
+        $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}$/', $first);
+        $this->assertMatchesRegularExpression('/\?ver=[a-f0-9]{8}$/', $second);
     }
 
     public function test_restrict_rest_api_allows_logged_in_users(): void

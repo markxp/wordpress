@@ -62,7 +62,7 @@ services:
     image: localhost/wordpress-test:latest
     build:
       # Use project root as context for consistency with composer docker-build
-      context: ..LICENSE
+      context: ..
       # Path relative to context (project root)
       dockerfile: deployment/php-fpm.Dockerfile
       target: app

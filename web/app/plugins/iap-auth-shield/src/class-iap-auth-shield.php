@@ -33,7 +33,7 @@ class Plugin
 
     public function __construct()
     {
-        $this->audience = getenv('IAP_AUDIENCE') ?: (defined('IAP_AUDIENCE') ? IAP_AUDIENCE : '');
+        $this->audience = $this->resolve_env_value('IAP_AUDIENCE');
 
         // Register Admin UI Hooks
         if (is_admin()) {
@@ -56,11 +56,34 @@ class Plugin
     }
 
     /**
+     * Resolve configuration from WordPress constants (defined in config/application.php via .env),
+     * falling back to thread-safe $_ENV / $_SERVER or getenv() for standalone portability.
+     */
+    protected function resolve_env_value(string $name): string
+    {
+        if (defined($name)) {
+            $val = constant($name);
+            return is_bool($val) ? ($val ? 'true' : 'false') : (string) $val;
+        }
+
+        if (isset($_ENV[$name]) && $_ENV[$name] !== '') {
+            return (string) $_ENV[$name];
+        }
+
+        if (isset($_SERVER[$name]) && $_SERVER[$name] !== '') {
+            return (string) $_SERVER[$name];
+        }
+
+        $env = getenv($name);
+        return $env !== false ? (string) $env : '';
+    }
+
+    /**
      * Check if Environment Variable toggle is enabled.
      */
     public function is_env_enabled(): bool
     {
-        $enabled = getenv('IAP_AUTH_ENABLED') ?: (defined('IAP_AUTH_ENABLED') ? IAP_AUTH_ENABLED : false);
+        $enabled = $this->resolve_env_value('IAP_AUTH_ENABLED');
         return filter_var($enabled, FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -220,6 +243,21 @@ class Plugin
             return;
         }
 
+        // Fast-path: If the WordPress session is already authenticated and matches the IAP header email,
+        // skip expensive OpenSSL ES256 signature verification and database user lookup on subsequent requests.
+        if (is_user_logged_in()) {
+            $current_user = function_exists('wp_get_current_user') ? wp_get_current_user() : null;
+            $current_email = is_object($current_user) && !empty($current_user->user_email) ? (string) $current_user->user_email : '';
+            $header_email = $this->extract_iap_email_header();
+            if ($current_email !== '' && ($header_email === '' || strcasecmp($current_email, $header_email) === 0)) {
+                if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php') {
+                    wp_safe_redirect(admin_url());
+                    exit;
+                }
+                return;
+            }
+        }
+
         try {
             $payload = $this->verify_jwt($jwt);
         } catch (\Exception $e) {
@@ -338,13 +376,28 @@ class Plugin
         return (string) preg_replace($pattern, '$1', $content);
     }
 
+    /**
+     * Extract the authenticated email from HTTP_X_GOOG_AUTHENTICATED_USER_EMAIL if present
+     * (e.g. "accounts.google.com:user@example.com" -> "user@example.com").
+     */
+    protected function extract_iap_email_header(): string
+    {
+        $raw = $_SERVER['HTTP_X_GOOG_AUTHENTICATED_USER_EMAIL'] ?? '';
+        if (!is_string($raw) || $raw === '') {
+            return '';
+        }
+
+        $pos = strpos($raw, ':');
+        return $pos !== false ? substr($raw, $pos + 1) : $raw;
+    }
+
     protected function get_google_iap_keys()
     {
         $transient_key = 'gcp_iap_public_keys';
         $keys = get_transient($transient_key);
 
         if (false === $keys) {
-            $response = wp_remote_get('https://www.gstatic.com/iap/verify/public_key');
+            $response = wp_remote_get('https://www.gstatic.com/iap/verify/public_key', ['timeout' => 3]);
             if (is_wp_error($response)) {
                 throw new \Exception('Unable to fetch Google public keys - ' . $response->get_error_message());
             }

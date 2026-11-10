@@ -6,11 +6,7 @@ A secure-by-default, PSR-4 compliant security plugin for WordPress that systemat
 
 ## Features
 
-### 1. Environment-Based Activation Toggle
-Supports twin-service/multi-container architectures sharing the same database. Control whether the firewall is active on a specific server container using:
-*   **`SECURITY_HARDENING_ENABLED`**: Set to `true` to activate. Defaults to `false` (fail-safe / disabled).
-
-### 2. REST API Gatekeeper
+### 1. REST API Gatekeeper
 *   **Anonymous Reads Restricted**: Limits anonymous reads (`GET`, `HEAD`, `OPTIONS` only) to a strict whitelist:
     *   `/wp/v2/posts`
     *   `/wp/v2/pages`
@@ -30,7 +26,7 @@ Supports twin-service/multi-container architectures sharing the same database. C
     });
     ```
 
-### 3. Query Parameter Bypass Blocker
+### 2. Query Parameter Bypass Blocker
 Intercepts initialization (`init` hook at priority 1) and blocks direct query parameter access to standard bypass parameters for anonymous requests:
 *   `?rest_route=` → Returns `400 Bad Request`
 *   `?feed=` → Returns `404 Not Found`
@@ -40,11 +36,11 @@ Intercepts initialization (`init` hook at priority 1) and blocks direct query pa
 
 *Note: Forwards Nginx path blocks (e.g. `location /feed/`) safely without any risk of query string bypasses.*
 
-### 4. Global Feed & Author Suppression
+### 3. Global Feed & Author Suppression
 *   **Feeds Disabled**: Disables feeds globally for all posts, pages, taxonomies, comments, and the root site. Returns a 404 response.
 *   **Author Enumeration Blocked**: Strips the `author` query variable from query compilation, and returns a 404 for all `/author/` archive pages.
 
-### 5. WP Version Hiding
+### 4. WP Version Hiding
 *   Removes the `<meta name="generator">` tag from HTML heads.
 *   Replaces WordPress core version query strings (`?ver=X.Y.Z` matching `get_bloginfo('version')`) with a deterministic 8-character HMAC-SHA256 hash using `wp_salt('nonce')` so the core version is concealed while preserving immutable browser cache-busting across WordPress upgrades.
 *   Removes generator strings from RSS templates.
@@ -55,7 +51,3 @@ Intercepts initialization (`init` hook at priority 1) and blocks direct query pa
 
 1. Place the `security-hardening` folder under `web/app/plugins/`.
 2. Activate the plugin in the WordPress Dashboard.
-3. Enable it on the desired server instances by setting the environment variable:
-   ```bash
-   SECURITY_HARDENING_ENABLED=true
-   ```

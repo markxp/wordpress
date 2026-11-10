@@ -15,10 +15,17 @@ use WP_Error;
 class TestableIAPPlugin extends Plugin
 {
     public array $mockPayload = [];
+    public int $verifyJwtCallCount = 0;
 
     protected function verify_jwt($jwt)
     {
+        $this->verifyJwtCallCount++;
         return $this->mockPayload;
+    }
+
+    public function callGetGoogleIapKeys()
+    {
+        return $this->get_google_iap_keys();
     }
 }
 
@@ -155,6 +162,7 @@ class IAPAuthShieldTest extends TestCase
         putenv('IAP_AUDIENCE=test-audience');
 
         Functions\when('is_admin')->justReturn(true);
+        Functions\when('is_user_logged_in')->justReturn(false);
         $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] = 'mock.jwt.token';
 
         Functions\when('get_user_by')->justReturn(false);
@@ -202,6 +210,50 @@ class IAPAuthShieldTest extends TestCase
         unset($_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION']);
         putenv('IAP_AUTH_ENABLED');
         putenv('IAP_AUDIENCE');
+    }
+
+    public function test_handle_iap_authentication_fast_paths_when_already_logged_in_as_matching_user(): void
+    {
+        $_ENV['IAP_AUTH_ENABLED'] = 'true';
+        $_ENV['IAP_AUDIENCE'] = 'test-audience';
+
+        Functions\when('is_admin')->justReturn(true);
+        Functions\when('is_user_logged_in')->justReturn(true);
+        Functions\when('wp_get_current_user')->justReturn((object) ['ID' => 42, 'user_email' => 'admin@example.com']);
+        $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] = 'mock.jwt.token';
+        $_SERVER['HTTP_X_GOOG_AUTHENTICATED_USER_EMAIL'] = 'accounts.google.com:admin@example.com';
+
+        Functions\expect('get_user_by')->never();
+        Functions\expect('wp_set_auth_cookie')->never();
+
+        $testPlugin = new TestableIAPPlugin();
+        $testPlugin->handle_iap_authentication();
+
+        $this->assertSame(0, $testPlugin->verifyJwtCallCount);
+
+        unset(
+            $_ENV['IAP_AUTH_ENABLED'],
+            $_ENV['IAP_AUDIENCE'],
+            $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'],
+            $_SERVER['HTTP_X_GOOG_AUTHENTICATED_USER_EMAIL'],
+        );
+    }
+
+    public function test_get_google_iap_keys_passes_3_second_timeout_to_wp_remote_get(): void
+    {
+        Functions\when('get_transient')->justReturn(false);
+        Functions\expect('wp_remote_get')
+            ->once()
+            ->with('https://www.gstatic.com/iap/verify/public_key', ['timeout' => 3])
+            ->andReturn(['body' => '{"kid1":"pem1"}']);
+        Functions\when('is_wp_error')->justReturn(false);
+        Functions\when('wp_remote_retrieve_body')->justReturn('{"kid1":"pem1"}');
+        Functions\expect('set_transient')->once();
+
+        $testPlugin = new TestableIAPPlugin();
+        $keys = $testPlugin->callGetGoogleIapKeys();
+
+        $this->assertSame(['kid1' => 'pem1'], $keys);
     }
 
     public function test_api_firewall_allows_logged_in_users(): void

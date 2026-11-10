@@ -6,10 +6,11 @@ A lightweight, zero-configuration WordPress plugin that emits a clean `<meta nam
 
 - **Automatic Context Resolution**:
   - **Front Page & Blog Index**: Uses the WordPress site tagline (`get_bloginfo('description')`).
-  - **Singular Posts & Pages**: Prioritizes the manual post excerpt (`post_excerpt`), falling back to sanitized block content (`excerpt_remove_blocks()` and `strip_shortcodes()`).
+  - **Singular Posts & Pages**: Prioritizes the manual post excerpt (`post_excerpt`), falling back to sanitized block content (`excerpt_remove_blocks()` and `strip_shortcodes()`) bounded to the leading ~4 KB block boundary for O(1) performance on long-form posts.
   - **Category, Tag & Taxonomy Archives**: Uses the term description (`term_description()`), falling back to the site tagline.
   - **404 Error Pages**: Automatically suppresses output on 404 responses.
 - **Multibyte-Safe Truncation**: Strips HTML tags, normalizes whitespace, and truncates descriptions cleanly at 160 UTF-8 characters (`…`).
+- **Optional Object Cache Toggle**: Provides a Settings toggle (`seo_meta_description_use_object_cache` option and filter hook) to cache resolved singular post descriptions via `wp_cache_get()` / `wp_cache_set()` when the server enables a persistent object cache (APCu, Redis, Memcached).
 - **Extensible Filter**: Provides the `seo_meta_description_content` filter hook for custom programmatic overrides.
 
 ## Extensibility (Filter Hooks)
