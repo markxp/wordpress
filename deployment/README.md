@@ -15,5 +15,6 @@
 ### As the deployment orchestrator, it also contains `knative` and `docker-compose` deployable script (yaml)
 
 * A `knative.yaml` (and `docker-compose.yaml`) for deploying a multi-container service. (The `docker-compose.yaml` should have the same meaning as `knative.yaml`)
+* A [`wp-cron-trigger.md`](wp-cron-trigger.md) guide with a recommended zero-cost Google Apps Script (`apps-script-oauth2` + Service Account OIDC token) and Cloud Scheduler implementation for triggering `/wp/wp-cron.php` when `DISABLE_WP_CRON=true`.
 
 The `knative` service is fully stateless.
