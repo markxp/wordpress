@@ -3,12 +3,12 @@
 /**
  * Main Plugin Class - Resolves and prints <meta name="description"> in wp_head.
  *
- * @package SEO_Meta_Description
+ * @package Legispect_SEO_Meta_Description
  */
 
 declare(strict_types=1);
 
-namespace SEO_Meta_Description;
+namespace Legispect_SEO_Meta_Description;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -18,8 +18,8 @@ class Plugin
 {
     public const MAX_LENGTH = 160;
     public const CONTENT_SLICE_BYTES = 4096;
-    public const CACHE_GROUP = 'seo_meta_description';
-    public const OPTION_USE_OBJECT_CACHE = 'seo_meta_description_use_object_cache';
+    public const CACHE_GROUP = 'legispect_seo_meta_description';
+    public const OPTION_USE_OBJECT_CACHE = 'legispect_seo_meta_description_use_object_cache';
 
     public function __construct()
     {
@@ -28,8 +28,8 @@ class Plugin
         if (function_exists('is_admin') && is_admin()) {
             add_action('admin_menu', [$this, 'register_admin_settings_page']);
             add_action('admin_init', [$this, 'register_plugin_settings']);
-            add_filter('plugin_action_links_' . plugin_basename(__DIR__ . '/../seo-meta-description.php'), [$this, 'add_action_links']);
-            add_action('after_plugin_row_' . plugin_basename(__DIR__ . '/../seo-meta-description.php'), [$this, 'render_plugin_row_status'], 10, 2);
+            add_filter('plugin_action_links_' . plugin_basename(__DIR__ . '/../legispect-seo-meta-description.php'), [$this, 'add_action_links']);
+            add_action('after_plugin_row_' . plugin_basename(__DIR__ . '/../legispect-seo-meta-description.php'), [$this, 'render_plugin_row_status'], 10, 2);
         }
     }
 
@@ -40,10 +40,10 @@ class Plugin
     {
         add_submenu_page(
             'options.php',
-            'SEO Meta Description Configuration & Status',
-            'SEO Meta Description',
+            'Legispect SEO Meta Description Configuration & Status',
+            'Legispect SEO Meta Description',
             'manage_options',
-            'seo-meta-description',
+            'legispect-seo-meta-description',
             [$this, 'render_admin_settings_page'],
         );
     }
@@ -53,7 +53,7 @@ class Plugin
      */
     public function add_action_links(array $links): array
     {
-        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=seo-meta-description')) . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=legispect-seo-meta-description')) . '">' . __('Settings') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }
@@ -69,7 +69,7 @@ class Plugin
 
         echo '<tr class="plugin-update-tr"><td colspan="3" class="plugin-update colspanchange"><div class="update-message notice inline notice-alt" style="margin:5px 0 5px 0; border-left-color: #10b981;">';
         echo '<p><span style="' . esc_attr($badge_style) . ' padding:3px 8px; border-radius:12px; font-weight:600; font-size:11px; margin-right:8px;">' . esc_html($status_text) . '</span>';
-        echo '<strong>SEO Meta Description Status:</strong> Active and emitting <code>&lt;meta name="description"&gt;</code> tags (Object Cache Toggle: <code>' . ($cache_enabled ? 'ON' : 'OFF') . '</code>).';
+        echo '<strong>Legispect SEO Meta Description Status:</strong> Active and emitting <code>&lt;meta name="description"&gt;</code> tags (Object Cache Toggle: <code>' . ($cache_enabled ? 'ON' : 'OFF') . '</code>).';
         echo '</p></div></td></tr>';
     }
 
@@ -78,25 +78,25 @@ class Plugin
      */
     public function register_plugin_settings(): void
     {
-        register_setting('seo_meta_description_settings_group', self::OPTION_USE_OBJECT_CACHE, [
+        register_setting('legispect_seo_meta_description_settings_group', self::OPTION_USE_OBJECT_CACHE, [
             'type'              => 'string',
             'sanitize_callback' => [$this, 'sanitize_checkbox_setting'],
             'default'           => '0',
         ]);
 
         add_settings_section(
-            'seo_meta_description_cache_section',
+            'legispect_seo_meta_description_cache_section',
             'Performance & Caching Settings',
             [$this, 'render_cache_section_info'],
-            'seo-meta-description',
+            'legispect-seo-meta-description',
         );
 
         add_settings_field(
             self::OPTION_USE_OBJECT_CACHE,
             'Enable Object Cache',
             [$this, 'render_use_object_cache_field'],
-            'seo-meta-description',
-            'seo_meta_description_cache_section',
+            'legispect-seo-meta-description',
+            'legispect_seo_meta_description_cache_section',
         );
     }
 
@@ -135,7 +135,7 @@ class Plugin
     {
         ?>
         <div class="wrap">
-            <h1>SEO Meta Description Configuration &amp; Status</h1>
+            <h1>Legispect SEO Meta Description Configuration &amp; Status</h1>
 
             <div style="background:#fff; border:1px solid #ccd0d4; padding:20px; border-radius:8px; margin-top:20px; margin-bottom:25px; max-width:800px;">
                 <h2 style="margin-top:0;">Instance Operational Indicator</h2>
@@ -149,8 +149,8 @@ class Plugin
 
             <form method="post" action="options.php">
                 <?php
-                    settings_fields('seo_meta_description_settings_group');
-        do_settings_sections('seo-meta-description');
+                    settings_fields('legispect_seo_meta_description_settings_group');
+        do_settings_sections('legispect-seo-meta-description');
         submit_button();
         ?>
             </form>
@@ -169,7 +169,7 @@ class Plugin
             $enabled = filter_var($raw, FILTER_VALIDATE_BOOLEAN);
         }
 
-        return (bool) apply_filters('seo_meta_description_use_object_cache', $enabled);
+        return (bool) apply_filters('legispect_seo_meta_description_use_object_cache', $enabled);
     }
 
     /**
@@ -178,7 +178,7 @@ class Plugin
     public function render_meta_description(): void
     {
         $description = $this->resolve_description();
-        $description = (string) apply_filters('seo_meta_description_content', $description);
+        $description = (string) apply_filters('legispect_seo_meta_description_content', $description);
 
         if ($description === '') {
             return;

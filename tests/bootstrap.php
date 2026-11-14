@@ -120,4 +120,4 @@ require_once dirname(__DIR__) . '/web/app/plugins/security-hardening/src/Plugin.
 require_once dirname(__DIR__) . '/web/app/plugins/iap-auth-shield/src/class-iap-auth-shield.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-base.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-http-103-early-hints.php';
-require_once dirname(__DIR__) . '/web/app/plugins/seo-meta-description/src/class-seo-meta-description.php';
+require_once dirname(__DIR__) . '/web/app/plugins/legispect-seo-meta-description/src/class-legispect-seo-meta-description.php';

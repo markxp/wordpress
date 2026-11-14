@@ -15,9 +15,8 @@ A secure-by-default, PSR-4 compliant security plugin for WordPress that systemat
     *   `/wp/v2/types`
     *   `/wp/v2/taxonomies`
     *   `/wp/v2/media`
-    *   `/wp/v2/comments`
 *   **Anonymous Writes Blocked**: Explicitly blocks all anonymous database write operations (`POST`, `PUT`, `PATCH`, `DELETE`) globally across all endpoints (including comment submission and media uploads).
-*   **User Endpoint Protection**: Anonymous requests to `/wp/v2/users` or `/wp/v2/users/N` are strictly blocked.
+*   **User & Comment Endpoint Protection**: Anonymous requests to `/wp/v2/users`, `/wp/v2/users/N`, and `/wp/v2/comments` are strictly blocked.
 *   **Extensible Whitelist (`security_hardening_allowed_rest_prefixes`)**: Allowlist additional public read-only (`GET`, `HEAD`) route prefixes via the `security_hardening_allowed_rest_prefixes` filter:
     ```php
     add_filter('security_hardening_allowed_rest_prefixes', function (array $prefixes): array {
@@ -26,19 +25,20 @@ A secure-by-default, PSR-4 compliant security plugin for WordPress that systemat
     });
     ```
 
-### 2. Query Parameter Bypass Blocker
-Intercepts initialization (`init` hook at priority 1) and blocks direct query parameter access to standard bypass parameters for anonymous requests:
+### 2. Query Parameter Bypass & Trackback Blocker
+Intercepts initialization (`init` hook at priority 1) and request variable parsing (`request` filter) to block direct query parameter and pretty-permalink bypasses for anonymous requests:
 *   `?rest_route=` → Returns `400 Bad Request`
 *   `?feed=` → Returns `404 Not Found`
 *   `?author=` → Returns `404 Not Found`
-*   `?tb=` → Returns `403 Forbidden`
-*   `?embed=` → Returns `404 Not Found`
+*   `?tb=` or `/<permalink>/trackback` (`query_vars['tb']`) → Returns `403 Forbidden`
+*   Forces `pings_open` to `false` (priority `9999`) and blocks `pre_trackback_post` with `403 Forbidden` so legacy posts with `ping_status = 'open'` in `wp_posts` cannot accept trackback spam.
+*   Leaves `<permalink>/embed` (`?embed=`) available for oEmbed post previews.
 
 *Note: Forwards Nginx path blocks (e.g. `location /feed/`) safely without any risk of query string bypasses.*
 
 ### 3. Global Feed & Author Suppression
 *   **Feeds Disabled**: Disables feeds globally for all posts, pages, taxonomies, comments, and the root site. Returns a 404 response.
-*   **Author Enumeration Blocked**: Strips the `author` query variable from query compilation, and returns a 404 for all `/author/` archive pages.
+*   **Author Enumeration Blocked**: Strips both `author` and `author_name` query variables from query compilation, and returns a 404 for all `/author/` archive pages.
 
 ### 4. WP Version Hiding
 *   Removes the `<meta name="generator">` tag from HTML heads.

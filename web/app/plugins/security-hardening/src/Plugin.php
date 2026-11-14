@@ -59,9 +59,11 @@ class Plugin
         remove_action('wp_head', 'feed_links', 2);
         remove_action('wp_head', 'feed_links_extra', 3);
 
-        // 4. Prevent User Enumeration (Author Queries)
+        // 4. Prevent User Enumeration (Author Queries) & Pretty-Permalink Trackback Bypasses
         add_filter('request', [$this, 'block_author_query_vars']);
         add_action('template_redirect', [$this, 'block_author_archive_pages']);
+        add_filter('pings_open', '__return_false', 9999);
+        add_action('pre_trackback_post', [$this, 'block_trackback_execution'], 1);
 
         // 5. WordPress Version Hiding
         remove_action('wp_head', 'wp_generator');
@@ -129,10 +131,11 @@ class Plugin
 
                 <h3 style="margin-top:25px;">Active Protection Modules</h3>
                 <ul style="list-style-type:disc; padding-left:20px; line-height:1.6;">
-                    <li><strong>REST API Gatekeeper:</strong> Enforces authentication for sensitive REST routes and blocks anonymous POST/PUT/DELETE operations.</li>
-                    <li><strong>Query Parameter Bypass Blocker:</strong> Blocks direct <code>rest_route</code>, <code>feed</code>, <code>author</code>, <code>tb</code>, and <code>embed</code> communication parameter attacks.</li>
+                    <li><strong>REST API Gatekeeper:</strong> Enforces authentication for sensitive REST routes (including <code>/wp/v2/comments</code> and <code>/wp/v2/users</code>) and blocks anonymous POST/PUT/DELETE operations.</li>
+                    <li><strong>Query Parameter Bypass Blocker:</strong> Blocks direct <code>rest_route</code>, <code>feed</code>, <code>author</code>, and <code>tb</code> communication parameter attacks.</li>
+                    <li><strong>Trackback &amp; Pingback Defense:</strong> Disables trackbacks/pingbacks globally (<code>pings_open</code>, <code>pre_trackback_post</code>) and blocks both <code>?tb=</code> and pretty-permalink <code>/trackback</code> routes.</li>
                     <li><strong>Feed Suppression:</strong> Disables RSS/Atom/RDF feeds for anonymous visitors to prevent automated content scrapers.</li>
-                    <li><strong>User Enumeration Defense:</strong> Suppresses author archive pages and strips <code>author</code> query parameters for non-logged-in users.</li>
+                    <li><strong>User Enumeration Defense:</strong> Suppresses author archive pages and strips <code>author</code> and <code>author_name</code> query variables for non-logged-in users.</li>
                     <li><strong>Version Hiding:</strong> Replaces generator meta tags and hashes WordPress core <code>ver=</code> query strings on static script/style URLs.</li>
                 </ul>
             </div>
@@ -141,7 +144,7 @@ class Plugin
     }
 
     /**
-     * Intercept and block direct query parameter bypasses (rest_route, feed, author, tb, embed) for anonymous users.
+     * Intercept and block direct query parameter bypasses (rest_route, feed, author, tb) for anonymous users.
      */
     public function block_query_parameter_bypasses()
     {
@@ -175,11 +178,6 @@ class Plugin
                 __('Forbidden'),
                 ['response' => 403],
             );
-        }
-
-        // 5. Block direct embed parameter (Bypasses embed filters)
-        if (isset($_GET['embed']) || isset($_POST['embed'])) {
-            $this->trigger_404_error();
         }
     }
 
@@ -222,7 +220,6 @@ class Plugin
             '/wp/v2/types',
             '/wp/v2/taxonomies',
             '/wp/v2/media',
-            '/wp/v2/comments',
         ]);
 
         // Get the requested REST route (cater to pretty URIs)
@@ -263,14 +260,33 @@ class Plugin
     }
 
     /**
-     * Strip the "author" query parameter from request variables.
+     * Strip "author", "author_name", and "tb" (trackback) query variables parsed by WP_Rewrite for anonymous users.
      */
     public function block_author_query_vars($query_vars)
     {
-        if (isset($query_vars['author']) && !is_user_logged_in()) {
-            unset($query_vars['author']);
+        if (!is_user_logged_in()) {
+            if (isset($query_vars['tb'])) {
+                wp_die(
+                    __('Trackbacks are disabled on this site.'),
+                    __('Forbidden'),
+                    ['response' => 403],
+                );
+            }
+            unset($query_vars['author'], $query_vars['author_name']);
         }
         return $query_vars;
+    }
+
+    /**
+     * Hard-stop any direct wp-trackback.php execution.
+     */
+    public function block_trackback_execution(): void
+    {
+        wp_die(
+            __('Trackbacks are disabled on this site.'),
+            __('Forbidden'),
+            ['response' => 403],
+        );
     }
 
     /**

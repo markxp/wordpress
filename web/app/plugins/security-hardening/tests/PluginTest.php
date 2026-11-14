@@ -24,6 +24,8 @@ class PluginTest extends TestCase
         Actions\expectAdded('do_feed_rss2')->once();
         Filters\expectAdded('request')->once();
         Actions\expectAdded('template_redirect')->once();
+        Filters\expectAdded('pings_open')->once();
+        Actions\expectAdded('pre_trackback_post')->once();
         Filters\expectAdded('the_generator')->once();
         Filters\expectAdded('style_loader_src')->once();
         Filters\expectAdded('script_loader_src')->once();
@@ -54,11 +56,43 @@ class PluginTest extends TestCase
         Functions\when('is_user_logged_in')->justReturn(false);
 
         $plugin = new Plugin();
-        $vars = ['author' => '1', 'p' => '123'];
+        $vars = ['author' => '1', 'author_name' => 'admin', 'p' => '123'];
         $filtered = $plugin->block_author_query_vars($vars);
 
         $this->assertArrayNotHasKey('author', $filtered);
+        $this->assertArrayNotHasKey('author_name', $filtered);
         $this->assertSame(['p' => '123'], $filtered);
+    }
+
+    public function test_block_author_query_vars_dies_on_pretty_permalink_trackback_for_guests(): void
+    {
+        Functions\when('is_user_logged_in')->justReturn(false);
+        Functions\expect('wp_die')
+            ->once()
+            ->with(
+                'Trackbacks are disabled on this site.',
+                'Forbidden',
+                ['response' => 403],
+            );
+
+        $plugin = new Plugin();
+        $plugin->block_author_query_vars(['name' => 'post-slug', 'tb' => '1']);
+        $this->assertTrue(true);
+    }
+
+    public function test_block_trackback_execution_dies_with_403(): void
+    {
+        Functions\expect('wp_die')
+            ->once()
+            ->with(
+                'Trackbacks are disabled on this site.',
+                'Forbidden',
+                ['response' => 403],
+            );
+
+        $plugin = new Plugin();
+        $plugin->block_trackback_execution();
+        $this->assertTrue(true);
     }
 
     public function test_block_author_query_vars_retains_author_for_logged_in_users(): void

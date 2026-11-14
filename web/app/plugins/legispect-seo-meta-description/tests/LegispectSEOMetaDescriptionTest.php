@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace SEO_Meta_Description\Tests;
+namespace Legispect_SEO_Meta_Description\Tests;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
-use SEO_Meta_Description\Plugin;
+use Legispect_SEO_Meta_Description\Plugin;
 use Tests\TestCase;
 
-class SEOMetaDescriptionTest extends TestCase
+class LegispectSEOMetaDescriptionTest extends TestCase
 {
     public function test_constructor_hooks_wp_head(): void
     {
@@ -138,8 +138,8 @@ class SEOMetaDescriptionTest extends TestCase
         Functions\when('get_bloginfo')->justReturn('Original tagline');
         Functions\when('wp_strip_all_tags')->returnArg();
 
-        // Brain Monkey filter expectation for seo_meta_description_content
-        \Brain\Monkey\Filters\expectApplied('seo_meta_description_content')
+        // Brain Monkey filter expectation for legispect_seo_meta_description_content
+        \Brain\Monkey\Filters\expectApplied('legispect_seo_meta_description_content')
             ->once()
             ->andReturn('Custom programmatic description injected via filter.');
 
@@ -191,7 +191,7 @@ class SEOMetaDescriptionTest extends TestCase
         Functions\when('get_bloginfo')->justReturn('Some tagline');
         Functions\when('wp_strip_all_tags')->returnArg();
 
-        \Brain\Monkey\Filters\expectApplied('seo_meta_description_content')
+        \Brain\Monkey\Filters\expectApplied('legispect_seo_meta_description_content')
             ->once()
             ->andReturn('');
 
@@ -296,13 +296,13 @@ class SEOMetaDescriptionTest extends TestCase
     public function test_admin_settings_hooks_and_checkbox_sanitization(): void
     {
         Functions\when('is_admin')->justReturn(true);
-        Functions\when('plugin_basename')->justReturn('seo-meta-description/seo-meta-description.php');
+        Functions\when('plugin_basename')->justReturn('legispect-seo-meta-description/legispect-seo-meta-description.php');
 
         Actions\expectAdded('wp_head')->once();
         Actions\expectAdded('admin_menu')->once();
         Actions\expectAdded('admin_init')->once();
-        \Brain\Monkey\Filters\expectAdded('plugin_action_links_seo-meta-description/seo-meta-description.php')->once();
-        Actions\expectAdded('after_plugin_row_seo-meta-description/seo-meta-description.php')->once();
+        \Brain\Monkey\Filters\expectAdded('plugin_action_links_legispect-seo-meta-description/legispect-seo-meta-description.php')->once();
+        Actions\expectAdded('after_plugin_row_legispect-seo-meta-description/legispect-seo-meta-description.php')->once();
 
         $plugin = new Plugin();
         $this->assertSame('1', $plugin->sanitize_checkbox_setting('1'));
