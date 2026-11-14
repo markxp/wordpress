@@ -187,9 +187,22 @@ server {
     root    /var/www/html/web;
     index   index.php index.htm index.html;
 
-    # Security: No PHP execution in uploads
+    # Security: No PHP execution in uploads, core includes/content, or Bedrock app directory
     location ~ ^/app/uploads/.*\.php$ {
         return 401;
+    }
+
+    location ~ ^/(?:wp/)?(?:wp-includes|wp-content|app)/.*\.php$ {
+        return 404;
+    }
+
+    # Security: Block legacy XML-RPC & trackback endpoints (including pretty-permalink /trackback and ?tb=)
+    if ($args ~* "(?:^|&)tb=") {
+        return 404;
+    }
+
+    location ~* (?:/trackback(?:/|$)|^/(?:wp/)?(?:xmlrpc|wp-trackback|wp-signup|wp-activate|wp-mail|wp-settings|wp-links-opml)\.php$) {
+        return 404;
     }
 
     # Security: No access to .htaccess
@@ -245,9 +258,23 @@ server {
     root    /var/www/html/web;
     index   index.php index.htm index.html;
 
-    # Security: No PHP execution in uploads
-    location ~ ^/app/uploads/.*.php$ {
+    # Security: Public server is strictly read-only (reject POST/PUT/DELETE/PATCH before location matching)
+    if ($request_method !~ ^(?:GET|HEAD|OPTIONS)$) {
+        return 405;
+    }
+
+    # Security: Block query-parameter bypasses (trackbacks, feeds, author enumeration, direct rest_route) before PHP-FPM
+    if ($args ~* "(?:^|&)(?:tb|feed|author(?:_name)?|rest_route)=") {
+        return 404;
+    }
+
+    # Security: No PHP execution in uploads, core includes/content, or Bedrock app directory
+    location ~ ^/app/uploads/.*\.php$ {
         return 401;
+    }
+
+    location ~ ^/(?:wp/)?(?:wp-includes|wp-content|app)/.*\.php$ {
+        return 404;
     }
 
     location ~ /\.ht[^/]*$ {
@@ -274,16 +301,36 @@ server {
         return 404;
     }
 
-    # 4. Deny access to /wp-admin
-    # TODO: find a better configuration.
-
-    location ~ \.php$ {
-        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
-        if (!-f $document_root$fastcgi_script_name) {
-            return 404;
-        }
+    # Security: Allow public GET/HEAD access to admin-ajax.php if required by frontend plugins
+    location = /wp/wp-admin/admin-ajax.php {
         set $proxy_forwarded_elem $http_forwarded;
         fastcgi_pass fpm_backend;
+    }
+
+    # Security: Block wp-admin, wp-login.php, wp-comments-post.php, wp-cron.php, and legacy endpoints
+    location ~* ^/(?:wp/)?(?:wp-admin(?:/|$)|(?:wp-login|wp-comments-post|xmlrpc|wp-cron|wp-signup|wp-activate|wp-mail|wp-settings|wp-trackback|wp-links-opml|wp-load|wp-blog-header|wp-app|wp-register)\.php$) {
+        return 404;
+    }
+
+    # Security: Block pretty-permalink trackbacks, feeds, author archives, comments REST API, and admin/login redirect aliases
+    # (Leaves <permalink>/embed available for oEmbed previews)
+    location ~* (?:/trackback(?:/|$)|/(?:feed|rdf|rss|rss2|atom)(?:/|$)|wp-(?:atom|rdf|rss|rss2|feed|commentsrss2)\.php$) {
+        return 404;
+    }
+
+    location ~* ^/(?:author|wp-json/wp/v2/comments|(?:wp/)?(?:admin|dashboard|login(?:\.php)?))(?:/|$) {
+        return 404;
+    }
+
+    # Security: Explicit front-controller PHP execution whitelist
+    location = /index.php {
+        set $proxy_forwarded_elem $http_forwarded;
+        fastcgi_pass fpm_backend;
+    }
+
+    # Security: Deny all other direct .php execution on the public server
+    location ~ \.php$ {
+        return 404;
     }
 
     location / {

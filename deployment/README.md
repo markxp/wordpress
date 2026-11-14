@@ -5,7 +5,12 @@
 ### It contains application configuration
 
 * A `php-fpm` Dockerfile for building an application container image.
-* A `nginx.conf` for `nginx` configuration for web-server, which uses `fastcgi` to connect to the application container. Also providing OpenTelemetry tracing spans.
+* `nginx.default.conf.template` (and `nginx.conf`) with reference Nginx security hardening for Bedrock WordPress, including:
+  * **Read-Only Public Server Guard**: Restricts the default public server to `GET`, `HEAD`, and `OPTIONS` (`405` for `POST`/`PUT`/`DELETE`/`PATCH`).
+  * **Query-Parameter Bypass Blocker**: Blocks `?tb=`, `?feed=`, `?author=`, `?author_name=`, and `?rest_route=` before PHP-FPM while leaving `<permalink>/embed` (`?embed=`) available.
+  * **Core Script & Pretty-Permalink Endpoint Blocking**: Blocks `xmlrpc.php`, `wp-login.php`, `wp-comments-post.php`, `wp-cron.php`, `wp-trackback.php`, `/wp-admin/` (except `/wp/wp-admin/admin-ajax.php`), pretty-permalink `/trackback` and `/feed` routes, `/author` archives, `/wp-json/wp/v2/comments`, and canonical admin/login redirect aliases (`/admin`, `/dashboard`, `/login`).
+  * **Explicit Front-Controller Whitelist**: Restricts PHP-FPM execution on the public server strictly to `location = /index.php` and `location = /wp/wp-admin/admin-ajax.php`, returning `404` for all other `.php` paths.
+  * **OpenTelemetry Tracing**: Exports Nginx request spans to the sidecar collector.
 * A `otel-config.yaml` for `OpenTelemetry` collector configuration.
 
 ### It does not contains mysql configuration
