@@ -26,6 +26,9 @@
         <testsuite name="legispect-seo-meta-description">
             <directory>web/app/plugins/legispect-seo-meta-description/tests</directory>
         </testsuite>
+        <testsuite name="modern-site-icons">
+            <directory>web/app/plugins/modern-site-icons/tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -34,6 +37,7 @@
             <directory suffix=".php">web/app/plugins/iap-auth-shield/src</directory>
             <directory suffix=".php">web/app/plugins/http-103-early-hints/src</directory>
             <directory suffix=".php">web/app/plugins/legispect-seo-meta-description/src</directory>
+            <directory suffix=".php">web/app/plugins/modern-site-icons/src</directory>
         </include>
     </source>
 </phpunit>

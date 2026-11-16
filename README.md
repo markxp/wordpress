@@ -35,6 +35,7 @@ Purpose-built plugins developed in this codebase located in `web/app/plugins/`. 
 * **`http-103-early-hints`** ([`web/app/plugins/http-103-early-hints/README.md`](web/app/plugins/http-103-early-hints/README.md)): Stateless generator for CDN HTTP 103 Early Hints and `Link` preload headers.
 * **`remove-wp-default-link-header`** ([`web/app/plugins/remove-wp-default-link-header/README.md`](web/app/plugins/remove-wp-default-link-header/README.md)): Cleans redundant WordPress core REST API and RSD `<link>` headers from HTTP responses.
 * **`legispect-seo-meta-description`** ([`web/app/plugins/legispect-seo-meta-description/README.md`](web/app/plugins/legispect-seo-meta-description/README.md)): Emits a clean `<meta name="description">` tag in `wp_head` using the post excerpt, block content summary, taxonomy description, or site tagline.
+* **`modern-site-icons`** ([`web/app/plugins/modern-site-icons/README.md`](web/app/plugins/modern-site-icons/README.md)): Emits modern multi-format favicon and Web App Manifest `<link>` tags via `site_icon_meta_tags` when static icon assets exist at the web root.
 
 ---
 
