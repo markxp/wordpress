@@ -34,6 +34,7 @@ $webroot_dir = $root_dir . '/web';
  * Use Dotenv to set required environment variables and load .env file in root
  * .env.local will override .env if it exists
  */
+$dotenv_loaded_vars = [];
 if (file_exists($root_dir . '/.env')) {
     $env_files = file_exists($root_dir . '/.env.local')
         ? ['.env', '.env.local']
@@ -41,7 +42,7 @@ if (file_exists($root_dir . '/.env')) {
 
     $dotenv = Dotenv\Dotenv::createImmutable($root_dir, $env_files, false);
 
-    $dotenv->load();
+    $dotenv_loaded_vars = $dotenv->load();
 
     if (!env('DATABASE_URL')) {
         $dotenv->required(['DB_NAME', 'DB_USER', 'DB_PASSWORD']);
@@ -179,6 +180,39 @@ if (file_exists($env_config)) {
 }
 
 Config::apply();
+
+/**
+ * Scrub sensitive configuration and .env-loaded credentials from $_ENV and $_SERVER
+ * after WordPress constants have been defined, preserving only non-secret OTEL_* runtime keys.
+ */
+$scrub_keys = array_unique(array_merge(
+    array_keys($dotenv_loaded_vars),
+    [
+        'DB_NAME',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_HOST',
+        'DB_PREFIX',
+        'DB_SSL',
+        'DATABASE_URL',
+        'AUTH_KEY',
+        'SECURE_AUTH_KEY',
+        'LOGGED_IN_KEY',
+        'NONCE_KEY',
+        'AUTH_SALT',
+        'SECURE_AUTH_SALT',
+        'LOGGED_IN_SALT',
+        'NONCE_SALT',
+        'GOOGLESITEKIT_ENCRYPTION_KEY',
+        'GOOGLESITEKIT_ENCRYPTION_SALT',
+    ]
+));
+foreach ($scrub_keys as $key) {
+    if (!str_starts_with((string) $key, 'OTEL_')) {
+        unset($_ENV[$key], $_SERVER[$key]);
+    }
+}
+unset($dotenv_loaded_vars, $scrub_keys);
 
 /**
  * Bootstrap WordPress
