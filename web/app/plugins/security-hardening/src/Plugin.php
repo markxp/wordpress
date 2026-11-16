@@ -338,6 +338,10 @@ class Plugin
         status_header(404);
         nocache_headers();
 
+        if (!$this->headers_sent()) {
+            $this->send_header('Content-Type: text/html; charset=UTF-8');
+        }
+
         if (file_exists(get_query_template('404'))) {
             include(get_query_template('404'));
         } else {
@@ -348,5 +352,21 @@ class Plugin
             );
         }
         exit;
+    }
+
+    /**
+     * Check whether HTTP headers have already been sent.
+     */
+    protected function headers_sent(): bool
+    {
+        return headers_sent();
+    }
+
+    /**
+     * Emit a raw HTTP header.
+     */
+    protected function send_header(string $header): void
+    {
+        header($header);
     }
 }
