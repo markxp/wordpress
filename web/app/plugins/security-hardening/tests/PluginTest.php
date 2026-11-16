@@ -434,4 +434,76 @@ class PluginTest extends TestCase
         $this->assertCount(2, $updated);
         $this->assertStringContainsString('Settings', $updated[0]);
     }
+
+    public function test_disable_feed_handler_forces_html_content_type_on_404(): void
+    {
+        global $wp_query;
+        $wp_query = Mockery::mock();
+        $wp_query->shouldReceive('set_404')->once();
+
+        Functions\expect('status_header')->once()->with(404);
+        Functions\expect('nocache_headers')->once();
+        Functions\when('get_query_template')->justReturn('');
+        Functions\expect('wp_die')
+            ->once()
+            ->with('Resource not found.', 'Not Found', ['response' => 404])
+            ->andThrow(new \RuntimeException('wp_die'));
+
+        $plugin = new TestablePlugin(false);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('wp_die');
+            $plugin->disable_feed_handler();
+        } finally {
+            $wp_query = null;
+            $this->assertSame(['Content-Type: text/html; charset=UTF-8'], $plugin->sentHeaders);
+        }
+    }
+
+    public function test_disable_feed_handler_skips_header_when_headers_already_sent(): void
+    {
+        global $wp_query;
+        $wp_query = Mockery::mock();
+        $wp_query->shouldReceive('set_404')->once();
+
+        Functions\expect('status_header')->once()->with(404);
+        Functions\expect('nocache_headers')->once();
+        Functions\when('get_query_template')->justReturn('');
+        Functions\expect('wp_die')
+            ->once()
+            ->with('Resource not found.', 'Not Found', ['response' => 404])
+            ->andThrow(new \RuntimeException('wp_die'));
+
+        $plugin = new TestablePlugin(true);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('wp_die');
+            $plugin->disable_feed_handler();
+        } finally {
+            $wp_query = null;
+            $this->assertSame([], $plugin->sentHeaders);
+        }
+    }
+}
+
+class TestablePlugin extends Plugin
+{
+    public array $sentHeaders = [];
+
+    public function __construct(private readonly bool $headersAlreadySent)
+    {
+        parent::__construct();
+    }
+
+    protected function headers_sent(): bool
+    {
+        return $this->headersAlreadySent;
+    }
+
+    protected function send_header(string $header): void
+    {
+        $this->sentHeaders[] = $header;
+    }
 }
