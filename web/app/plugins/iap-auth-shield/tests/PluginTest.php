@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace IAP_Auth_Shield\Tests;
+namespace IapAuthShield\Tests;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
-use IAP_Auth_Shield\Plugin;
+use IapAuthShield\Plugin;
 use Mockery;
 use Tests\TestCase;
 use WP_Error;
@@ -29,7 +29,7 @@ class TestableIAPPlugin extends Plugin
     }
 }
 
-class IAPAuthShieldTest extends TestCase
+class PluginTest extends TestCase
 {
     public function test_instance_status_conditions(): void
     {

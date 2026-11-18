@@ -3,10 +3,10 @@
 /**
  * Main Plugin Class - Handles Google Cloud IAP identity mapping, REST API firewall, and Instance Status reporting.
  *
- * @package IAP_Auth_Shield
+ * @package IapAuthShield
  */
 
-namespace IAP_Auth_Shield;
+namespace IapAuthShield;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -56,7 +56,7 @@ class Plugin
     }
 
     /**
-     * Resolve configuration from WordPress constants (defined in config/application.php via .env),
+     * Resolve configuration from WordPress constants (e.g. wp-config.php or environment configuration),
      * falling back to thread-safe $_ENV / $_SERVER or getenv() for standalone portability.
      */
     protected function resolve_env_value(string $name): string
@@ -123,7 +123,7 @@ class Plugin
      */
     public function add_action_links($links)
     {
-        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=iap-auth-shield')) . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=iap-auth-shield')) . '">' . __('Settings', 'iap-auth-shield') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }

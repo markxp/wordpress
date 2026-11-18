@@ -1,24 +1,26 @@
 # GCP IAP Auth & API Shield (Stateless)
 
-A WordPress plugin to provide identity-aware authentication and a REST API firewall for WordPress sites running behind Google Cloud IAP (Identity-Aware Proxy).
+A stateless WordPress plugin that provides identity-aware authentication and a REST API firewall for WordPress sites running behind Google Cloud Identity-Aware Proxy (IAP).
 
 ## Features
 
-- **IAP JWT Verification**: Automatically verifies Google IAP JWT assertions to map Google identities to WordPress users.
-- **Auto-Login**: Gracefully logs in recognized employees and redirects them to the admin dashboard.
+- **IAP JWT Verification**: Verifies Google IAP ES256 JWT assertions against Google's public keys (`https://www.gstatic.com/iap/verify/public_key`, cached via WordPress transients) to map verified Google identities to WordPress users.
+- **Auto-Login & Fast-Path Session Reuse**: Logs in recognized WordPress users automatically and skips redundant OpenSSL verification on subsequent authenticated requests when the session email matches the IAP header.
 - **REST API Firewall**:
-  - Protects sensitive API endpoints.
-  - Whitelists common read-only endpoints (Posts, Pages, Categories, Tags, Media, Taxonomies, Types) for external visitors.
-  - Special bypass for comments to allow external POST/GET requests.
-- **Editor Origin Normalization**: Strips the internal IAP-protected Editor origin (`home_url()`) from local `/app/` and `/wp/` URLs (both HTML attributes and JSON-escaped Gutenberg block attributes) when saving post content so internal Cloud Run hostnames never leak to public readers.
-- **Stateless Configuration**: Controlled entirely via system environment variables.
+  - Protects sensitive REST API endpoints on IAP-gated instances.
+  - Whitelists common read-only (`GET`) endpoints (`/wp/v2/posts`, `/wp/v2/pages`, `/wp/v2/media`, `/wp/v2/categories`, `/wp/v2/tags`, `/wp/v2/taxonomies`, `/wp/v2/types`) for unauthenticated requests.
+  - Allows external `GET` and `POST` requests to `/wp/v2/comments`.
+- **Editor Origin Normalization**: Strips the internal IAP-protected Editor origin (`home_url()`) from local `/app/` and `/wp/` URLs (both HTML attributes and JSON-escaped Gutenberg block attributes) when saving post content so internal hostnames never leak to public readers.
+- **Stateless Configuration**: Controlled entirely via environment variables (`IAP_AUTH_ENABLED` and `IAP_AUDIENCE`) or PHP constants, allowing paired Reader/Editor instances sharing a database to exhibit asymmetric runtime behavior safely.
 
 ## Configuration
 
-The plugin uses the following environment variables:
+Set the following environment variables (or `wp-config.php` constants) on the IAP-protected instance:
 
-- `IAP_AUTH_ENABLED`: Set to `true` to enable the plugin.
-- `IAP_AUDIENCE`: The IAP Audience string (e.g., `/projects/PROJECT_NUMBER/global/backendServices/SERVICE_ID`).
+- `IAP_AUTH_ENABLED`: Set to `true` to enable IAP verification and firewall hooks on the current instance.
+- `IAP_AUDIENCE`: Expected Google Cloud IAP JWT `aud` claim (e.g., `/projects/PROJECT_NUMBER/global/backendServices/SERVICE_ID`).
+
+To inspect live environment variable and operational status in the WordPress admin dashboard, navigate to **Plugins** and click **Settings** under **GCP IAP Auth & API Shield (Stateless)** (`wp-admin/admin.php?page=iap-auth-shield`; intentionally hidden from the sidebar menu).
 
 ## Extensibility (Filter Hooks)
 
@@ -32,12 +34,18 @@ add_filter('iap_auth_shield_api_whitelist', function (array $whitelist): array {
 });
 ```
 
+## Requirements
+
+- WordPress 7.1 or higher
+- PHP 8.4 or higher
+- [`firebase/php-jwt`](https://github.com/firebase/php-jwt) (`^7.0`)
+
 ## Installation
 
-1. Copy the plugin folder to `wp-content/plugins/`.
-2. Ensure you have the `firebase/php-jwt` library installed via Composer or available in the `vendor` folder.
-3. Configure the required environment variables.
-4. Activate the plugin in the WordPress admin panel.
+1. Upload the `iap-auth-shield` folder to your WordPress `/wp-content/plugins/` directory.
+2. Ensure `firebase/php-jwt` is installed via Composer in your project or inside the plugin's `vendor/` folder.
+3. Configure `IAP_AUTH_ENABLED` and `IAP_AUDIENCE` in your environment.
+4. Activate the plugin through the **Plugins** menu in WordPress.
 
 ## License
 

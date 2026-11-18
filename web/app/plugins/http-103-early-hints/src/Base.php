@@ -3,10 +3,10 @@
 /**
  * Abstract Base Class - Contains the core heuristics and Link header generation logic.
  *
- * @package HTTP_103_Early_Hints
+ * @package Http103EarlyHints
  */
 
-namespace HTTP_103_Early_Hints;
+namespace Http103EarlyHints;
 
 use WP_Styles;
 use WP_Scripts;

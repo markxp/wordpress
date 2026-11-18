@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Legispect\Security\Tests;
+namespace SecurityHardening\Tests;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
-use Legispect\Security\Plugin;
 use Mockery;
+use SecurityHardening\Plugin;
 use Tests\TestCase;
 use WP_Error;
 

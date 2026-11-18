@@ -3,10 +3,10 @@
 /**
  * Main Plugin Class - Handles REST API hardening, feed suppression, author protection, version hiding, and Instance Status reporting.
  *
- * @package Legispect_Security
+ * @package SecurityHardening
  */
 
-namespace Legispect\Security;
+namespace SecurityHardening;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -92,7 +92,7 @@ class Plugin
      */
     public function add_action_links($links)
     {
-        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=security-hardening')) . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=security-hardening')) . '">' . __('Settings', 'security-hardening') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }
@@ -155,8 +155,8 @@ class Plugin
         // 1. Block direct rest_route parameter (Bypasses Nginx path filters)
         if (isset($_GET['rest_route']) || isset($_POST['rest_route'])) {
             wp_die(
-                __('Direct rest_route query parameter access is disabled for security.'),
-                __('Bad Request'),
+                __('Direct rest_route query parameter access is disabled for security.', 'security-hardening'),
+                __('Bad Request', 'security-hardening'),
                 ['response' => 400],
             );
         }
@@ -174,8 +174,8 @@ class Plugin
         // 4. Block direct tb parameter (Trackbacks)
         if (isset($_GET['tb']) || isset($_POST['tb'])) {
             wp_die(
-                __('Trackbacks are disabled on this site.'),
-                __('Forbidden'),
+                __('Trackbacks are disabled on this site.', 'security-hardening'),
+                __('Forbidden', 'security-hardening'),
                 ['response' => 403],
             );
         }
@@ -206,7 +206,7 @@ class Plugin
         if (!in_array($method, ['GET', 'HEAD'], true)) {
             return new \WP_Error(
                 'rest_cannot_access',
-                __('Only authenticated users can create or modify resources.'),
+                __('Only authenticated users can create or modify resources.', 'security-hardening'),
                 ['status' => 401],
             );
         }
@@ -246,7 +246,7 @@ class Plugin
         // Block everything else (like /wp/v2/users or /wp/v2/users/1)
         return new \WP_Error(
             'rest_cannot_access',
-            __('Only authenticated users can access this resource.'),
+            __('Only authenticated users can access this resource.', 'security-hardening'),
             ['status' => 401],
         );
     }
@@ -267,8 +267,8 @@ class Plugin
         if (!is_user_logged_in()) {
             if (isset($query_vars['tb'])) {
                 wp_die(
-                    __('Trackbacks are disabled on this site.'),
-                    __('Forbidden'),
+                    __('Trackbacks are disabled on this site.', 'security-hardening'),
+                    __('Forbidden', 'security-hardening'),
                     ['response' => 403],
                 );
             }
@@ -283,8 +283,8 @@ class Plugin
     public function block_trackback_execution(): void
     {
         wp_die(
-            __('Trackbacks are disabled on this site.'),
-            __('Forbidden'),
+            __('Trackbacks are disabled on this site.', 'security-hardening'),
+            __('Forbidden', 'security-hardening'),
             ['response' => 403],
         );
     }
@@ -346,8 +346,8 @@ class Plugin
             include(get_query_template('404'));
         } else {
             wp_die(
-                __('Resource not found.'),
-                __('Not Found'),
+                __('Resource not found.', 'security-hardening'),
+                __('Not Found', 'security-hardening'),
                 ['response' => 404],
             );
         }

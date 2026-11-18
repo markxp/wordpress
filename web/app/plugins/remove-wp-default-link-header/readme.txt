@@ -1,26 +1,26 @@
 === Remove WP Default Link Header ===
-Contributors: Antigravity
+Contributors: markxp
 Tags: header, cleanup, security, rest-api, shortlink
-Requires at least: 6.8
-Requires PHP: 8.3
-Tested up to: 6.9
+Requires at least: 7.1
+Tested up to: 7.1
+Requires PHP: 8.4
 Stable tag: 1.0.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
-Removes default WordPress RESTful API, shortlink, and XML-RPC links and headers.
+Removes default WordPress REST API, shortlink, RSD, Windows Live Writer, and X-Pingback links and HTTP headers, and disables XML-RPC.
 
 == Description ==
 
-Remove WP Default Link Header is a lightweight, high-performance plugin that cleans up your WordPress site's HTTP headers and HTML header output. It removes default links and response headers for:
+Remove WP Default Link Header is a lightweight, zero-configuration plugin that cleans up your WordPress site's HTTP response headers and HTML `<head>` output. It removes default links and response headers for:
 
-* WordPress REST API links (`wp_head` & HTTP Link headers)
-* Shortlinks (`wp_shortlink_wp_head` & HTTP Link headers)
+* WordPress REST API links (`wp_head` & HTTP `Link` headers)
+* Shortlinks (`wp_shortlink_wp_head` & HTTP `Link` headers)
 * RSD (Really Simple Discovery) links
 * Windows Live Writer manifest links
-* X-Pingback headers
+* `X-Pingback` HTTP response headers
 
-It also disables XML-RPC requests to enhance the security posture of your website.
+It also disables XML-RPC requests (`xmlrpc_enabled`) to reduce attack surface.
 
 == Installation ==
 

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace HTTP_103_Early_Hints\Tests;
+namespace Http103EarlyHints\Tests;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
-use HTTP_103_Early_Hints\Base;
+use Http103EarlyHints\Base;
 use Tests\TestCase;
 use WP_Scripts;
 use WP_Styles;

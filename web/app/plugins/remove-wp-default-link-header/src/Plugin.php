@@ -3,10 +3,10 @@
 /**
  * Main Plugin Class - Removes default WordPress RESTful API, shortlink, and XML-RPC links and headers.
  *
- * @package Remove_WP_Default_Link_Header
+ * @package RemoveWpDefaultLinkHeader
  */
 
-namespace Remove_WP_Default_Link_Header;
+namespace RemoveWpDefaultLinkHeader;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.

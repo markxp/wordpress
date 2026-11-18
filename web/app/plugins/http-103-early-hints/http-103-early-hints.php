@@ -4,24 +4,38 @@
  * Plugin Name: HTTP 103 Early Hints & Link Header Generator
  * Description: Intercepts enqueued styles and scripts, and outputs them as HTTP Link response headers to support CDN HTTP 103 Early Hints for faster page load.
  * Version: 1.0.0
- * Author: Antigravity
+ * Author: markxp
  * Text Domain: http-103-early-hints
  * License: MIT
  * License URI: https://opensource.org/licenses/MIT
- * Requires at least: 6.8
- * Requires PHP: 8.3
+ * Requires at least: 7.1
+ * Requires PHP: 8.4
  *
- * @package HTTP_103_Early_Hints
+ * @package Http103EarlyHints
  */
+
+declare(strict_types=1);
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// 1. Include the Abstract Base Class (Core engine)
-require_once __DIR__ . '/src/class-base.php';
+// 1. Register Self-Contained PSR-4 Autoloader
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'Http103EarlyHints\\';
+    $baseDir = __DIR__ . '/src/';
 
-// 2. Include the Main Plugin Class (Admin settings and initialization)
-require_once __DIR__ . '/src/class-http-103-early-hints.php';
+    if (!str_starts_with($class, $prefix)) {
+        return;
+    }
 
-new \HTTP_103_Early_Hints\Plugin();
+    $relativeClass = substr($class, strlen($prefix));
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
+
+// 2. Bootstrap the plugin
+new \Http103EarlyHints\Plugin();

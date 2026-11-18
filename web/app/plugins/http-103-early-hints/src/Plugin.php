@@ -1,11 +1,12 @@
 <?php
+
 /**
  * Main Plugin Class - Extends base class to add HTTP 103 Early Hints admin configuration UI and status reporting.
  *
- * @package HTTP_103_Early_Hints
+ * @package Http103EarlyHints
  */
 
-namespace HTTP_103_Early_Hints;
+namespace Http103EarlyHints;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -47,7 +48,7 @@ class Plugin extends Base
      */
     public function add_action_links($links)
     {
-        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=hlhg-settings')) . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=hlhg-settings')) . '">' . __('Settings', 'http-103-early-hints') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }

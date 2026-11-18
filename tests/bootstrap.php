@@ -115,10 +115,10 @@ if (!class_exists('WP_Scripts')) {
 require_once __DIR__ . '/TestCase.php';
 
 // Load homemade plugin classes
-require_once dirname(__DIR__) . '/web/app/plugins/remove-wp-default-link-header/src/class-remove-wp-default-link-header.php';
+require_once dirname(__DIR__) . '/web/app/plugins/remove-wp-default-link-header/src/Plugin.php';
 require_once dirname(__DIR__) . '/web/app/plugins/security-hardening/src/Plugin.php';
-require_once dirname(__DIR__) . '/web/app/plugins/iap-auth-shield/src/class-iap-auth-shield.php';
-require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-base.php';
-require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/class-http-103-early-hints.php';
-require_once dirname(__DIR__) . '/web/app/plugins/legispect-seo-meta-description/src/class-legispect-seo-meta-description.php';
+require_once dirname(__DIR__) . '/web/app/plugins/iap-auth-shield/src/Plugin.php';
+require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/Base.php';
+require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/Plugin.php';
+require_once dirname(__DIR__) . '/web/app/plugins/auto-meta-description/src/Plugin.php';
 require_once dirname(__DIR__) . '/web/app/plugins/modern-site-icons/src/Plugin.php';

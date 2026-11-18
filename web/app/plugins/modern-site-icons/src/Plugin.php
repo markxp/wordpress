@@ -3,10 +3,10 @@
 /**
  * Main Plugin Class - Filters site_icon_meta_tags and get_site_icon_url for static root icons.
  *
- * @package Modern_Site_Icons
+ * @package ModernSiteIcons
  */
 
-namespace Modern_Site_Icons;
+namespace ModernSiteIcons;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Modern_Site_Icons\Tests;
+namespace ModernSiteIcons\Tests;
 
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
-use Modern_Site_Icons\Plugin;
+use ModernSiteIcons\Plugin;
 use ReflectionMethod;
 use Tests\TestCase;
 

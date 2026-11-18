@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Remove_WP_Default_Link_Header\Tests;
+namespace RemoveWpDefaultLinkHeader\Tests;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
-use Remove_WP_Default_Link_Header\Plugin;
+use RemoveWpDefaultLinkHeader\Plugin;
 use Tests\TestCase;
 
 class PluginTest extends TestCase
