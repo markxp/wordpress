@@ -54,7 +54,7 @@
         "koodimonni-language/core-zh_tw": "^7.0",
         "open-telemetry/exporter-otlp": "^1.4",
         "open-telemetry/opentelemetry-auto-wordpress": "^0.3.0",
-        "php-http/guzzle7-adapter": "^1.1",
+        "symfony/http-client": "^8.0",
         "open-telemetry/transport-grpc": "^1.1",
         "firebase/php-jwt": "^7.0"
     },
@@ -76,7 +76,7 @@
             "tbachert/spi": true
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true,
     "extra": {
         "installer-paths": {
