@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dd2fc1536eb99e4efb13e33d43f0d456",
+    "content-hash": "09412cfa7a3f1fab09772b346d539382",
     "packages": [
         {
             "name": "brick/math",
@@ -590,11 +590,11 @@
         },
         {
             "name": "markxp/auto-meta-description",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/auto-meta-description",
-                "reference": "9c0d0ef936767b7f510dc1fbb6b47d09ba7346e9"
+                "reference": "50ae90600404a57b7c33baa1e67987fc13c4f82a"
             },
             "require": {
                 "php": ">=8.4"
@@ -646,11 +646,11 @@
         },
         {
             "name": "markxp/http-103-early-hints",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/http-103-early-hints",
-                "reference": "21156c076fff95780ef3081d78cf54327c3e3643"
+                "reference": "5f932146a2c8c240f7127e6960e0e5180f38df3a"
             },
             "require": {
                 "php": ">=8.4"
@@ -702,11 +702,11 @@
         },
         {
             "name": "markxp/iap-auth-shield",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.1.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/iap-auth-shield",
-                "reference": "3f06d282e3328f827e3a631c181983b3bc3c2adf"
+                "reference": "db178fc4f62534260cb10835b7320dd86aa426fb"
             },
             "require": {
                 "firebase/php-jwt": "^7.0",
@@ -772,11 +772,11 @@
         },
         {
             "name": "markxp/modern-site-icons",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/modern-site-icons",
-                "reference": "730ab9af3142cc8fa7085131db104c2ba362b679"
+                "reference": "c6615d83203a8cb92a195a48f1c7118488841f60"
             },
             "require": {
                 "php": ">=8.4"
@@ -828,11 +828,11 @@
         },
         {
             "name": "markxp/remove-wp-default-link-header",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/remove-wp-default-link-header",
-                "reference": "3761971b13768ee2f1c3c549092bb90924755280"
+                "reference": "057ad3335be986ce6b18f932edd5059ef4be237b"
             },
             "require": {
                 "php": ">=8.4"
@@ -884,11 +884,11 @@
         },
         {
             "name": "markxp/security-hardening",
-            "version": "dev-layered_composer_plugins",
+            "version": "1.0.0",
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/security-hardening",
-                "reference": "e40e020b736df93f4f48d7ac79bab4a5f3e81a3d"
+                "reference": "6e5186c3ccf2accfe875341b007dac3d5b66e7d2"
             },
             "require": {
                 "php": ">=8.4"
@@ -6875,12 +6875,6 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "markxp/auto-meta-description": 20,
-        "markxp/http-103-early-hints": 20,
-        "markxp/iap-auth-shield": 20,
-        "markxp/modern-site-icons": 20,
-        "markxp/remove-wp-default-link-header": 20,
-        "markxp/security-hardening": 20,
         "roave/security-advisories": 20
     },
     "prefer-stable": true,

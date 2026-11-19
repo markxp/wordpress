@@ -15,7 +15,7 @@ on:
       - 'LICENSE'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -43,16 +43,19 @@ jobs:
 
       - name: Validate Composer manifests
         run: |
-          composer validate
+          composer validate --strict
           for dir in custom-plugins/*/; do
             composer validate --strict --working-dir="$dir"
           done
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry --ignore-platform-req=php
 
       - name: Check code style (Pint)
         run: composer lint
 
-      - name: Run unit tests (PHPUnit)
+      - name: Run overall unit tests (PHPUnit)
         run: composer test
+
+      - name: Run per-plugin unit test suites (PHPUnit)
+        run: composer test:plugins

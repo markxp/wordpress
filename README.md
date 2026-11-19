@@ -28,14 +28,14 @@ Managed via Composer or official Google vendor archives:
 * **`wp-stateless`**: Media offloader by Usability Dynamics storing uploads in Google Cloud Storage buckets (installed via Composer: `wp-plugin/wp-stateless`).
 
 ### Custom (Homemade) Plugins
-Purpose-built plugins developed in this codebase located in `web/app/plugins/`. Refer to each plugin's individual `README.md` for in-depth architecture, configuration, and hook references:
-* **`iap-auth-shield`** ([`web/app/plugins/iap-auth-shield/README.md`](web/app/plugins/iap-auth-shield/README.md)): Authenticates users against Google Cloud Identity-Aware Proxy (IAP) JWT assertions and enforces a REST API firewall on protected administrative instances.
-* **`security-hardening`** ([`web/app/plugins/security-hardening/README.md`](web/app/plugins/security-hardening/README.md)): Restricts anonymous REST API access, strips user enumeration vectors, suppresses RSS/Atom feeds for unauthenticated visitors, and cleans WordPress generator version tags.
+Purpose-built plugins developed in this codebase as layered Composer packages under `custom-plugins/` (installed into `web/app/plugins/` via Composer `path` repository). Refer to each plugin's individual `README.md` for in-depth architecture, configuration, standalone testing/packaging, and hook references:
+* **`iap-auth-shield`** ([`custom-plugins/iap-auth-shield/README.md`](custom-plugins/iap-auth-shield/README.md)): Authenticates users against Google Cloud Identity-Aware Proxy (IAP) JWT assertions and enforces a REST API firewall on protected administrative instances.
+* **`security-hardening`** ([`custom-plugins/security-hardening/README.md`](custom-plugins/security-hardening/README.md)): Restricts anonymous REST API access, strips user enumeration vectors, suppresses RSS/Atom feeds for unauthenticated visitors, and cleans WordPress generator version tags.
   * *Extensibility*: Both security plugins provide independent, plugin-namespaced filter hooks (`iap_auth_shield_api_whitelist` and `security_hardening_allowed_rest_prefixes`) to allowlist custom public REST routes without cross-plugin coupling.
-* **`http-103-early-hints`** ([`web/app/plugins/http-103-early-hints/README.md`](web/app/plugins/http-103-early-hints/README.md)): Stateless generator for CDN HTTP 103 Early Hints and `Link` preload headers.
-* **`remove-wp-default-link-header`** ([`web/app/plugins/remove-wp-default-link-header/README.md`](web/app/plugins/remove-wp-default-link-header/README.md)): Cleans redundant WordPress core REST API and RSD `<link>` headers from HTTP responses.
-* **`auto-meta-description`** ([`web/app/plugins/auto-meta-description/README.md`](web/app/plugins/auto-meta-description/README.md)): Emits a clean `<meta name="description">` tag in `wp_head` using the post excerpt, block content summary, taxonomy description, or site tagline.
-* **`modern-site-icons`** ([`web/app/plugins/modern-site-icons/README.md`](web/app/plugins/modern-site-icons/README.md)): Emits modern multi-format favicon and Web App Manifest `<link>` tags via `site_icon_meta_tags` when static icon assets exist at the web root.
+* **`http-103-early-hints`** ([`custom-plugins/http-103-early-hints/README.md`](custom-plugins/http-103-early-hints/README.md)): Stateless generator for CDN HTTP 103 Early Hints and `Link` preload headers.
+* **`remove-wp-default-link-header`** ([`custom-plugins/remove-wp-default-link-header/README.md`](custom-plugins/remove-wp-default-link-header/README.md)): Cleans redundant WordPress core REST API and RSD `<link>` headers from HTTP responses.
+* **`auto-meta-description`** ([`custom-plugins/auto-meta-description/README.md`](custom-plugins/auto-meta-description/README.md)): Emits a clean `<meta name="description">` tag in `wp_head` using the post excerpt, block content summary, taxonomy description, or site tagline.
+* **`modern-site-icons`** ([`custom-plugins/modern-site-icons/README.md`](custom-plugins/modern-site-icons/README.md)): Emits modern multi-format favicon and Web App Manifest `<link>` tags via `site_icon_meta_tags` when static icon assets exist at the web root.
 
 ---
 

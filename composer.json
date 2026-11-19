@@ -42,7 +42,15 @@
             "type": "path",
             "url": "custom-plugins/*",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "markxp/auto-meta-description": "1.0.0",
+                    "markxp/http-103-early-hints": "1.0.0",
+                    "markxp/iap-auth-shield": "1.1.0",
+                    "markxp/modern-site-icons": "1.0.0",
+                    "markxp/remove-wp-default-link-header": "1.0.0",
+                    "markxp/security-hardening": "1.0.0"
+                }
             }
         }
     ],
@@ -63,12 +71,12 @@
         "open-telemetry/opentelemetry-auto-wordpress": "^0.3.0",
         "symfony/http-client": "^8.0",
         "open-telemetry/transport-grpc": "^1.1",
-        "markxp/auto-meta-description": "@dev",
-        "markxp/http-103-early-hints": "@dev",
-        "markxp/iap-auth-shield": "@dev",
-        "markxp/modern-site-icons": "@dev",
-        "markxp/remove-wp-default-link-header": "@dev",
-        "markxp/security-hardening": "@dev"
+        "markxp/auto-meta-description": "^1.0",
+        "markxp/http-103-early-hints": "^1.0",
+        "markxp/iap-auth-shield": "^1.1",
+        "markxp/modern-site-icons": "^1.0",
+        "markxp/remove-wp-default-link-header": "^1.0",
+        "markxp/security-hardening": "^1.0"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
@@ -111,8 +119,14 @@
         "test": [
             "phpunit"
         ],
+        "test:plugins": [
+            "bash -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done'"
+        ],
         "test:container": [
             "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit"
+        ],
+        "test:plugins:container": [
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; php vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done' || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; php vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done'"
         ],
         "lint": [
             "pint --test"
