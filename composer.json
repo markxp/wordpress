@@ -120,13 +120,34 @@
             "phpunit"
         ],
         "test:plugins": [
-            "bash -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done'"
+            "bash -c 'set -e; shopt -s nullglob; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; composer --working-dir=\"$dir\" test; fi; done'"
+        ],
+        "test:plugin": [
+            "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test -- \"$@\"' --"
         ],
         "test:container": [
             "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit"
         ],
         "test:plugins:container": [
-            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; php vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done' || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/; do echo \"==> Testing ${dir}\"; php vendor/bin/phpunit -c \"${dir}phpunit.xml.dist\"; done'"
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done' || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done'"
+        ],
+        "test:plugin:container": [
+            "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test:container -- \"$@\"' --"
+        ],
+        "test:plugins:sapi": [
+            "bash -c 'set -e; shopt -s nullglob; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.sapi.xml.dist\" ]; then echo \"==> SAPI Testing ${dir}\"; composer --working-dir=\"$dir\" test:sapi; fi; done'"
+        ],
+        "test:plugins:sapi:container": [
+            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c 'set -e; apk add --no-cache nginx bash >/dev/null; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.sapi.xml.dist\" ]; then echo \"==> SAPI Testing ${dir}\"; (cd \"$dir\" && bash bin/test-sapi.sh); fi; done' || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c 'set -e; apk add --no-cache nginx bash >/dev/null; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.sapi.xml.dist\" ]; then echo \"==> SAPI Testing ${dir}\"; (cd \"$dir\" && bash bin/test-sapi.sh); fi; done'"
+        ],
+        "test:plugin:sapi": [
+            "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test:sapi -- \"$@\"' --"
+        ],
+        "test:plugin:sapi:container": [
+            "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test:sapi:container -- \"$@\"' --"
+        ],
+        "test:sapi:stack": [
+            "bash bin/test-root-sapi.sh"
         ],
         "lint": [
             "pint --test"

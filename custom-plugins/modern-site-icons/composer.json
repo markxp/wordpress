@@ -28,10 +28,15 @@
         }
     },
     "scripts": {
-        "test": "phpunit",
-        "lint": "pint --test",
-        "lint:fix": "pint",
-        "build:dist": "bash bin/build-dist.sh"
+        "test": "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --",
+        "test:container": "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --",
+        "lint": "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --",
+        "lint:container": "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --",
+        "lint:fix": "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --",
+        "lint:fix:container": "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --",
+        "build:dist": "bash bin/build-dist.sh",
+        "test:sapi": "bash bin/test-sapi.sh",
+        "test:sapi:container": "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
     },
     "minimum-stability": "stable",
     "prefer-stable": true

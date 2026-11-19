@@ -40,6 +40,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 > **Note:** Composer ignores `require-dev` in `path`/`vcs` dependencies when installed from a parent Bedrock project. To run PHPUnit or Laravel Pint **standalone** inside this plugin directory, first run `composer install` here:
 
 ```bash
+# Inside the Bedrock monorepo (uses root vendor/ automatically, or local vendor/ if installed):
+composer test:container
+composer lint:container
+
+# If extracted outside the monorepo (standalone repository):
 composer install
 composer test
 composer lint

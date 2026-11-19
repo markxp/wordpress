@@ -37,19 +37,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json') }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
           restore-keys: |
             composer-${{ runner.os }}-
 
       - name: Validate Composer manifests
+        shell: bash
         run: |
+          shopt -s nullglob
           composer validate --strict
-          for dir in custom-plugins/*/; do
-            composer validate --strict --working-dir="$dir"
+          for dir in custom-plugins/*/ custom-themes/*/; do
+            if [[ -f "${dir}composer.json" ]]; then
+              composer validate --strict --working-dir="$dir"
+            fi
           done
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry --ignore-platform-req=php
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
 
       - name: Check code style (Pint)
         run: composer lint
@@ -57,5 +61,16 @@ jobs:
       - name: Run overall unit tests (PHPUnit)
         run: composer test
 
-      - name: Run per-plugin unit test suites (PHPUnit)
+      - name: Run per-package unit test suites (PHPUnit)
         run: composer test:plugins
+
+      - name: Install Nginx and PHP-FPM for SAPI tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx-light
+          if ! command -v php-fpm >/dev/null 2>&1 && ! command -v php-fpm8.5 >/dev/null 2>&1; then
+            sudo apt-get install -y -qq php8.5-fpm
+          fi
+
+      - name: Run per-package SAPI tests (nginx + php-fpm)
+        run: composer test:plugins:sapi

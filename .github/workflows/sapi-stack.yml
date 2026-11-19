@@ -1,0 +1,28 @@
+name: SAPI Stack Integration (Root)
+
+on:
+  pull_request:
+    branches: ['main']
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sapi-stack:
+    name: Full Container SAPI Stack (Nginx + PHP-FPM + MariaDB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run root container SAPI stack tests
+        run: |
+          chmod +x bin/test-root-sapi.sh
+          composer test:sapi:stack

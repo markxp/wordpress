@@ -1,0 +1,75 @@
+services:
+  nginx:
+    container_name: wp-sapi-nginx
+    image: localhost/nginx-sapi-test:latest
+    build:
+      context: ..
+      dockerfile: deployment/nginx.Dockerfile
+    ports:
+      - "${SAPI_NGINX_PORT:-18080}:8080"
+      - "${SAPI_NGINX_HEALTH_PORT:-18081}:8081"
+    environment:
+      NGINX_PORT: 8080
+      NGINX_HEALTH_PORT: 8081
+      NGINX_BACKEND_HOST: "127.0.0.1:9000"
+      NGINX_ENABLE_OTEL: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/nginx_status"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: "no"
+
+  wordpress:
+    container_name: wp-sapi-php-fpm
+    image: localhost/wordpress-sapi-test:latest
+    build:
+      context: ..
+      dockerfile: deployment/php-fpm.Dockerfile
+      target: app
+    network_mode: "container:wp-sapi-nginx"
+    volumes:
+      - "${SAPI_ENV_FILE:-/dev/null}:/var/www/html/dotfiles/latest:ro"
+    environment:
+      WP_ENV: testing
+      WP_ENVIRONMENT_TYPE: local
+      DB_HOST: "127.0.0.1"
+      DB_NAME: wordpress
+      DB_USER: wordpress
+      DB_PASSWORD: wordpress_test_password
+      PM: static
+      PM_MAX_CHILDREN: "3"
+      PM_STATUS_LISTEN: "9001"
+      OTEL_SDK_DISABLED: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    depends_on:
+      nginx:
+        condition: service_started
+      mariadb:
+        condition: service_healthy
+    restart: "no"
+
+  mariadb:
+    container_name: wp-sapi-mariadb
+    image: mirror.gcr.io/library/mariadb:11
+    network_mode: "container:wp-sapi-nginx"
+    tmpfs:
+      - /var/lib/mysql
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress_test_password
+      MARIADB_ROOT_PASSWORD: root_test_password
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    depends_on:
+      nginx:
+        condition: service_started
+    restart: "no"

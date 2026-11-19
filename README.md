@@ -101,8 +101,15 @@ WordPress requires canonical home and site URLs. In this repository, URL resolut
 ## Developer Workflows
 
 ```bash
-# Run unit test suite (via Podman/Docker container)
+# Run overall unit test suite (via Podman/Docker container)
 composer test:container
+
+# Run each custom plugin/theme test suite independently
+composer test:plugins:container
+
+# Run a single plugin/theme's unit tests independently (from root or inside custom-plugins/<slug>/)
+composer test:plugin:container iap-auth-shield
+# or: (cd custom-plugins/iap-auth-shield && composer test:container)
 
 # Run code style linter (Laravel Pint - PSR-12)
 composer lint:container
