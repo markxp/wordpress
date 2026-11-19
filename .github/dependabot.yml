@@ -1,11 +1,20 @@
 version: 2
 updates:
-  # Maintain dependencies for Composer
+  # Maintain dependencies for Composer (root)
   - package-ecosystem: "composer"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Maintain dependencies for custom plugins with external requirements
+  - package-ecosystem: "composer"
+    directory: "/custom-plugins/iap-auth-shield"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
 

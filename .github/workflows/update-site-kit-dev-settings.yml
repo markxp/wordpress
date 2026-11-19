@@ -1,0 +1,47 @@
+name: Update Site Kit Dev Settings
+
+on:
+  schedule:
+    - cron: '0 0 1 * *' # Run monthly on the 1st at 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-plugin:
+    name: Check & Update google-site-kit-dev-settings
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: none
+
+      - name: Run Site Kit Dev Settings updater
+        id: update
+        run: |
+          chmod +x bin/update-site-kit-dev-settings.sh
+          ./bin/update-site-kit-dev-settings.sh
+          NEW_VERSION="$(sed -n 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*\([^[:space:]]*\).*/\1/p' web/app/plugins/google-site-kit-dev-settings/google-site-kit-dev-settings.php | head -n 1)"
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request if updated
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(plugins): update google-site-kit-dev-settings to ${{ steps.update.outputs.version }}"
+          title: "chore(plugins): update google-site-kit-dev-settings to ${{ steps.update.outputs.version }}"
+          body: |
+            Automated monthly check against Google's official Site Kit Dev Settings update feed (`https://storage.googleapis.com/site-kit-dev-plugins/google-site-kit-dev-settings/updates.json`).
+
+            Updated `web/app/plugins/google-site-kit-dev-settings` to version `${{ steps.update.outputs.version }}`.
+          branch: chore/update-site-kit-dev-settings
+          delete-branch: true
+          labels: |
+            dependencies

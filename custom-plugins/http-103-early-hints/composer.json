@@ -1,0 +1,38 @@
+{
+    "name": "markxp/http-103-early-hints",
+    "description": "Intercepts enqueued styles and scripts, and outputs them as HTTP Link response headers to support CDN HTTP 103 Early Hints for faster page load.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "markxp"
+        }
+    ],
+    "require": {
+        "php": ">=8.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "Http103EarlyHints\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Http103EarlyHints\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint --test",
+        "lint:fix": "pint",
+        "build:dist": "bash bin/build-dist.sh"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

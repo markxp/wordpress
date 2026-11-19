@@ -1,0 +1,52 @@
+{
+    "name": "markxp/iap-auth-shield",
+    "description": "IAP authentication and REST API firewall controlled by system environment variables, protecting the backend while keeping the frontend open.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "markxp"
+        }
+    ],
+    "require": {
+        "php": ">=8.4",
+        "firebase/php-jwt": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "IapAuthShield\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "IapAuthShield\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "strauss": {
+            "target_directory": "vendor-prefixed",
+            "namespace_prefix": "IapAuthShield\\Vendor\\",
+            "classmap_prefix": "IapAuthShield_Vendor_",
+            "constant_prefix": "IAP_AUTH_SHIELD_VENDOR_",
+            "packages": [
+                "firebase/php-jwt"
+            ],
+            "include_modified_date": false,
+            "include_author": false
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint --test",
+        "lint:fix": "pint",
+        "build:dist": "bash bin/build-dist.sh"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

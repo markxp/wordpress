@@ -12,32 +12,32 @@
          failOnWarning="true">
     <testsuites>
         <testsuite name="remove-wp-default-link-header">
-            <directory>web/app/plugins/remove-wp-default-link-header/tests</directory>
+            <directory>custom-plugins/remove-wp-default-link-header/tests</directory>
         </testsuite>
         <testsuite name="security-hardening">
-            <directory>web/app/plugins/security-hardening/tests</directory>
+            <directory>custom-plugins/security-hardening/tests</directory>
         </testsuite>
         <testsuite name="iap-auth-shield">
-            <directory>web/app/plugins/iap-auth-shield/tests</directory>
+            <directory>custom-plugins/iap-auth-shield/tests</directory>
         </testsuite>
         <testsuite name="http-103-early-hints">
-            <directory>web/app/plugins/http-103-early-hints/tests</directory>
+            <directory>custom-plugins/http-103-early-hints/tests</directory>
         </testsuite>
         <testsuite name="auto-meta-description">
-            <directory>web/app/plugins/auto-meta-description/tests</directory>
+            <directory>custom-plugins/auto-meta-description/tests</directory>
         </testsuite>
         <testsuite name="modern-site-icons">
-            <directory>web/app/plugins/modern-site-icons/tests</directory>
+            <directory>custom-plugins/modern-site-icons/tests</directory>
         </testsuite>
     </testsuites>
     <source>
         <include>
-            <directory suffix=".php">web/app/plugins/remove-wp-default-link-header/src</directory>
-            <directory suffix=".php">web/app/plugins/security-hardening/src</directory>
-            <directory suffix=".php">web/app/plugins/iap-auth-shield/src</directory>
-            <directory suffix=".php">web/app/plugins/http-103-early-hints/src</directory>
-            <directory suffix=".php">web/app/plugins/auto-meta-description/src</directory>
-            <directory suffix=".php">web/app/plugins/modern-site-icons/src</directory>
+            <directory suffix=".php">custom-plugins/remove-wp-default-link-header/src</directory>
+            <directory suffix=".php">custom-plugins/security-hardening/src</directory>
+            <directory suffix=".php">custom-plugins/iap-auth-shield/src</directory>
+            <directory suffix=".php">custom-plugins/http-103-early-hints/src</directory>
+            <directory suffix=".php">custom-plugins/auto-meta-description/src</directory>
+            <directory suffix=".php">custom-plugins/modern-site-icons/src</directory>
         </include>
     </source>
 </phpunit>

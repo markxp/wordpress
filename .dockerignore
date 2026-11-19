@@ -12,7 +12,6 @@ vendor/
 !web/wp/wp-config.php
 web/wp
 !web/app/plugins/google-site-kit-dev-settings/*
-!web/app/plugins/iap-auth-shield
 web/app
 .agents/
 .vscode/

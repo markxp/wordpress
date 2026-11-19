@@ -12,10 +12,12 @@ RUN find . -mindepth 1 -delete && \
 COPY --from=mirror.gcr.io/composer/composer:latest /usr/bin/composer /usr/bin/composer
 # install dependencies before copying the whole app.
 COPY composer.json composer.lock ./
+COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
-    composer install --no-dev --no-interaction --apcu-autoloader --ignore-platform-reqs
+    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader --ignore-platform-reqs
 # copy our app
 COPY . .
+RUN rm -rf custom-plugins
 
 # truncate all PHP files to 0 bytes for security and image size optimization
 RUN find . -type f -name "*.php" -exec truncate -s 0 {} +

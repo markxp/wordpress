@@ -162,11 +162,13 @@ COPY --from=mirror.gcr.io/composer/composer:latest /usr/bin/composer /usr/bin/co
 
 # Install dependencies before copying the rest of the application to take advantage of layer caching.
 COPY composer.json composer.lock ./
+COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
-    composer install --no-dev --no-interaction --apcu-autoloader
+    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader
 
 # Copy the application source code
 COPY . .
+RUN rm -rf custom-plugins
 
 # Final production stage
 FROM php-fpm as app

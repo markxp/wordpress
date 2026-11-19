@@ -37,6 +37,13 @@
             "only": [
                 "koodimonni-language/core-zh_tw"
             ]
+        },
+        {
+            "type": "path",
+            "url": "custom-plugins/*",
+            "options": {
+                "symlink": true
+            }
         }
     ],
     "require": {
@@ -56,7 +63,12 @@
         "open-telemetry/opentelemetry-auto-wordpress": "^0.3.0",
         "symfony/http-client": "^8.0",
         "open-telemetry/transport-grpc": "^1.1",
-        "firebase/php-jwt": "^7.0"
+        "markxp/auto-meta-description": "@dev",
+        "markxp/http-103-early-hints": "@dev",
+        "markxp/iap-auth-shield": "@dev",
+        "markxp/modern-site-icons": "@dev",
+        "markxp/remove-wp-default-link-header": "@dev",
+        "markxp/security-hardening": "@dev"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest",
@@ -118,7 +130,13 @@
             "rm -rf vendor",
             "rm -rf web/wp",
             "rm -rf web/app/plugins/google-site-kit",
-            "rm -rf web/app/plugins/wp-stateless"
+            "rm -rf web/app/plugins/wp-stateless",
+            "rm -rf web/app/plugins/auto-meta-description",
+            "rm -rf web/app/plugins/http-103-early-hints",
+            "rm -rf web/app/plugins/iap-auth-shield",
+            "rm -rf web/app/plugins/modern-site-icons",
+            "rm -rf web/app/plugins/remove-wp-default-link-header",
+            "rm -rf web/app/plugins/security-hardening"
         ],
         "update:dev": [
             "composer update --ignore-platform-reqs"

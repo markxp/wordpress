@@ -3,9 +3,10 @@
     "exclude": [
         "vendor",
         "web/wp",
-        "web/app/plugins/google-site-kit",
-        "web/app/plugins/google-site-kit-dev-settings",
-        "web/app/plugins/wp-stateless",
+        "web/app/plugins",
         "web/app/themes/twentytwentyfour"
+    ],
+    "notPath": [
+        "custom-plugins/*/vendor"
     ]
 }

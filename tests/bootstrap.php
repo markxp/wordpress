@@ -113,11 +113,6 @@ if (!class_exists('WP_Scripts')) {
 
 // Load base TestCase
 require_once __DIR__ . '/TestCase.php';
-
-// Load homemade plugin classes
-require_once dirname(__DIR__) . '/web/app/plugins/remove-wp-default-link-header/src/Plugin.php';
-require_once dirname(__DIR__) . '/web/app/plugins/security-hardening/src/Plugin.php';
-require_once dirname(__DIR__) . '/web/app/plugins/iap-auth-shield/src/Plugin.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/Base.php';
 require_once dirname(__DIR__) . '/web/app/plugins/http-103-early-hints/src/Plugin.php';
 require_once dirname(__DIR__) . '/web/app/plugins/auto-meta-description/src/Plugin.php';

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "824e8b4320414d651499a8bc5e1c07ca",
+    "content-hash": "dd2fc1536eb99e4efb13e33d43f0d456",
     "packages": [
         {
             "name": "brick/math",
@@ -587,6 +587,356 @@
             },
             "time": "2022-02-02T11:42:57+00:00",
             "published-time": "2022-02-10T19:25:48+00:00"
+        },
+        {
+            "name": "markxp/auto-meta-description",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/auto-meta-description",
+                "reference": "9c0d0ef936767b7f510dc1fbb6b47d09ba7346e9"
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "autoload": {
+                "psr-4": {
+                    "AutoMetaDescription\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "AutoMetaDescription\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "Lightweight plugin that emits a clean <meta name=\"description\"> tag in wp_head using the post excerpt, block content summary, taxonomy description, or site tagline.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "markxp/http-103-early-hints",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/http-103-early-hints",
+                "reference": "21156c076fff95780ef3081d78cf54327c3e3643"
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "autoload": {
+                "psr-4": {
+                    "Http103EarlyHints\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Http103EarlyHints\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "Intercepts enqueued styles and scripts, and outputs them as HTTP Link response headers to support CDN HTTP 103 Early Hints for faster page load.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "markxp/iap-auth-shield",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/iap-auth-shield",
+                "reference": "3f06d282e3328f827e3a631c181983b3bc3c2adf"
+            },
+            "require": {
+                "firebase/php-jwt": "^7.0",
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "extra": {
+                "strauss": {
+                    "target_directory": "vendor-prefixed",
+                    "namespace_prefix": "IapAuthShield\\Vendor\\",
+                    "classmap_prefix": "IapAuthShield_Vendor_",
+                    "constant_prefix": "IAP_AUTH_SHIELD_VENDOR_",
+                    "packages": [
+                        "firebase/php-jwt"
+                    ],
+                    "include_modified_date": false,
+                    "include_author": false
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "IapAuthShield\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "IapAuthShield\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "IAP authentication and REST API firewall controlled by system environment variables, protecting the backend while keeping the frontend open.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "markxp/modern-site-icons",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/modern-site-icons",
+                "reference": "730ab9af3142cc8fa7085131db104c2ba362b679"
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "autoload": {
+                "psr-4": {
+                    "ModernSiteIcons\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "ModernSiteIcons\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "Emits modern multi-format favicon and Web App Manifest tags via site_icon_meta_tags when static root icon assets are present.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "markxp/remove-wp-default-link-header",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/remove-wp-default-link-header",
+                "reference": "3761971b13768ee2f1c3c549092bb90924755280"
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "autoload": {
+                "psr-4": {
+                    "RemoveWpDefaultLinkHeader\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "RemoveWpDefaultLinkHeader\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "Removes default WordPress RESTful API, shortlink, and XML-RPC links and headers.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "markxp/security-hardening",
+            "version": "dev-layered_composer_plugins",
+            "dist": {
+                "type": "path",
+                "url": "custom-plugins/security-hardening",
+                "reference": "e40e020b736df93f4f48d7ac79bab4a5f3e81a3d"
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "require-dev": {
+                "brain/monkey": "^2.6",
+                "laravel/pint": "^1.27",
+                "mockery/mockery": "^1.6",
+                "phpunit/phpunit": "^13"
+            },
+            "type": "wordpress-plugin",
+            "autoload": {
+                "psr-4": {
+                    "SecurityHardening\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "SecurityHardening\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "pint --test"
+                ],
+                "lint:fix": [
+                    "pint"
+                ],
+                "build:dist": [
+                    "bash bin/build-dist.sh"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "markxp"
+                }
+            ],
+            "description": "Secures the WordPress site systematically against data leaks, scraper bots, and username enumeration.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "nyholm/psr7",
@@ -6525,6 +6875,12 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "markxp/auto-meta-description": 20,
+        "markxp/http-103-early-hints": 20,
+        "markxp/iap-auth-shield": 20,
+        "markxp/modern-site-icons": 20,
+        "markxp/remove-wp-default-link-header": 20,
+        "markxp/security-hardening": 20,
         "roave/security-advisories": 20
     },
     "prefer-stable": true,

@@ -1,0 +1,38 @@
+{
+    "name": "markxp/modern-site-icons",
+    "description": "Emits modern multi-format favicon and Web App Manifest tags via site_icon_meta_tags when static root icon assets are present.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "markxp"
+        }
+    ],
+    "require": {
+        "php": ">=8.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "ModernSiteIcons\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ModernSiteIcons\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint --test",
+        "lint:fix": "pint",
+        "build:dist": "bash bin/build-dist.sh"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

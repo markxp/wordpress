@@ -1,0 +1,38 @@
+{
+    "name": "markxp/auto-meta-description",
+    "description": "Lightweight plugin that emits a clean <meta name=\"description\"> tag in wp_head using the post excerpt, block content summary, taxonomy description, or site tagline.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "markxp"
+        }
+    ],
+    "require": {
+        "php": ">=8.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "AutoMetaDescription\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AutoMetaDescription\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "pint --test",
+        "lint:fix": "pint",
+        "build:dist": "bash bin/build-dist.sh"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
