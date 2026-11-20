@@ -15,7 +15,7 @@ This skill defines the standards, code conventions, and architectural best pract
 ## 1. Custom Plugin Engineering Standards
 
 1. **Layered Monorepo Layout & Community Conventions**:
-   - Author homemade plugins under `custom-plugins/<plugin-slug>/` as standalone Composer packages (`"type": "wordpress-plugin"`), wired into the root Bedrock `composer.json` via a `path` repository (`symlink: true` locally; `COMPOSER_MIRROR_PATH_REPOS=1` in container builds) so Composer installs them into `web/app/plugins/<plugin-slug>/`.
+   - Author homemade plugins under `custom-plugins/<plugin-slug>/` as standalone Composer packages (`"type": "wordpress-plugin"`), wired into the root Bedrock `composer.json` via a `path` repository (omit `"symlink": true` so Composer auto-symlinks locally by default while honoring `COMPOSER_MIRROR_PATH_REPOS=1` to mirror files in container builds) so Composer installs them into `web/app/plugins/<plugin-slug>/`.
    - Follow the same layered `path` repository pattern under `custom-themes/<theme-slug>/` (`"type": "wordpress-theme"`, installed into `web/app/themes/<theme-slug>/`) when authoring custom themes.
    - Code must remain portable and reusable across standard WordPress environments without hardcoding proprietary assumptions.
    - Use standard WordPress plugin headers, hooks (`plugins_loaded`, `init`, etc.), and the Settings API.
@@ -42,7 +42,7 @@ This skill defines the standards, code conventions, and architectural best pract
 ## 2. Custom Theme Engineering Standards (Modern Block Themes / FSE)
 
 1. **Layered Monorepo Layout**:
-   - Author homemade themes under `custom-themes/<theme-slug>/` as standalone Composer packages (`"type": "wordpress-theme"`), wired into the root Bedrock `composer.json` via a `path` repository (`symlink: true` locally; `COMPOSER_MIRROR_PATH_REPOS=1` in container builds) so Composer installs them into `web/app/themes/<theme-slug>/`.
+   - Author homemade themes under `custom-themes/<theme-slug>/` as standalone Composer packages (`"type": "wordpress-theme"`), wired into the root Bedrock `composer.json` via a `path` repository (omit `"symlink": true` so Composer auto-symlinks locally by default while honoring `COMPOSER_MIRROR_PATH_REPOS=1` to mirror files in container builds) so Composer installs them into `web/app/themes/<theme-slug>/`.
 2. **Full Site Editing (FSE) First**:
    - Target modern Block Themes prioritizing `theme.json` configuration over custom PHP template files.
    - Core structure:
