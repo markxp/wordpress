@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "09412cfa7a3f1fab09772b346d539382",
+    "content-hash": "304b2a914078c9504789ffbb4571cca0",
     "packages": [
         {
             "name": "brick/math",
@@ -594,7 +594,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/auto-meta-description",
-                "reference": "50ae90600404a57b7c33baa1e67987fc13c4f82a"
+                "reference": "f2ab4d31e9bf51f6edc5d34e9d86394b31a4bb7a"
             },
             "require": {
                 "php": ">=8.4"
@@ -618,16 +618,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -640,7 +655,6 @@
             ],
             "description": "Lightweight plugin that emits a clean <meta name=\"description\"> tag in wp_head using the post excerpt, block content summary, taxonomy description, or site tagline.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },
@@ -650,7 +664,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/http-103-early-hints",
-                "reference": "5f932146a2c8c240f7127e6960e0e5180f38df3a"
+                "reference": "7d1f21ea2a6316ac60418f36b748cefb12fc0fcf"
             },
             "require": {
                 "php": ">=8.4"
@@ -674,16 +688,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -696,7 +725,6 @@
             ],
             "description": "Intercepts enqueued styles and scripts, and outputs them as HTTP Link response headers to support CDN HTTP 103 Early Hints for faster page load.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },
@@ -706,7 +734,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/iap-auth-shield",
-                "reference": "db178fc4f62534260cb10835b7320dd86aa426fb"
+                "reference": "b8a8540a9681154e7c2d9b49e7d8664787c1e129"
             },
             "require": {
                 "firebase/php-jwt": "^7.0",
@@ -744,16 +772,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -766,7 +809,6 @@
             ],
             "description": "IAP authentication and REST API firewall controlled by system environment variables, protecting the backend while keeping the frontend open.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },
@@ -776,7 +818,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/modern-site-icons",
-                "reference": "c6615d83203a8cb92a195a48f1c7118488841f60"
+                "reference": "050e8afc558ad6515957f11aa5b48c5d1d41e1fb"
             },
             "require": {
                 "php": ">=8.4"
@@ -800,16 +842,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -822,7 +879,6 @@
             ],
             "description": "Emits modern multi-format favicon and Web App Manifest tags via site_icon_meta_tags when static root icon assets are present.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },
@@ -832,7 +888,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/remove-wp-default-link-header",
-                "reference": "057ad3335be986ce6b18f932edd5059ef4be237b"
+                "reference": "70bd85a0af23d9c0c5715831553dcd02d756c1b0"
             },
             "require": {
                 "php": ">=8.4"
@@ -856,16 +912,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -878,7 +949,6 @@
             ],
             "description": "Removes default WordPress RESTful API, shortlink, and XML-RPC links and headers.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },
@@ -888,7 +958,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom-plugins/security-hardening",
-                "reference": "6e5186c3ccf2accfe875341b007dac3d5b66e7d2"
+                "reference": "59df338f82a9d55c256a168981410c137481d783"
             },
             "require": {
                 "php": ">=8.4"
@@ -912,16 +982,31 @@
             },
             "scripts": {
                 "test": [
-                    "phpunit"
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit \"$@\"; else ../../vendor/bin/phpunit \"$@\"; fi' --"
+                ],
+                "test:container": [
+                    "bash -c 'if [ -x vendor/bin/phpunit ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/phpunit \"$@\"); fi' --"
                 ],
                 "lint": [
-                    "pint --test"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint --test \"$@\"; else ../../vendor/bin/pint --test \"$@\"; fi' --"
+                ],
+                "lint:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint --test \"$@\"); fi' --"
                 ],
                 "lint:fix": [
-                    "pint"
+                    "bash -c 'if [ -x vendor/bin/pint ]; then vendor/bin/pint \"$@\"; else ../../vendor/bin/pint \"$@\"; fi' --"
+                ],
+                "lint:fix:container": [
+                    "bash -c 'if [ -x vendor/bin/pint ]; then docker run --rm -v \"$(pwd):/plugin:z\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\" || docker run --rm -v \"$(pwd):/plugin\" -w /plugin mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint \"$@\"; else ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-cli php /workspace/vendor/bin/pint \"$@\"); fi' --"
                 ],
                 "build:dist": [
                     "bash bin/build-dist.sh"
+                ],
+                "test:sapi": [
+                    "bash bin/test-sapi.sh"
+                ],
+                "test:sapi:container": [
+                    "bash -c 'ROOT=\"$(cd ../.. && pwd)\" && REL=\"${PWD#${ROOT}/}\" && (docker run --rm -v \"${ROOT}:/workspace:z\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\" || docker run --rm -v \"${ROOT}:/workspace\" -w \"/workspace/${REL}\" mirror.gcr.io/library/php:8.5.12-fpm-alpine sh -c \"apk add --no-cache nginx bash >/dev/null && bash bin/test-sapi.sh $1\")' --"
                 ]
             },
             "license": [
@@ -934,7 +1019,6 @@
             ],
             "description": "Secures the WordPress site systematically against data leaks, scraper bots, and username enumeration.",
             "transport-options": {
-                "symlink": true,
                 "relative": true
             }
         },

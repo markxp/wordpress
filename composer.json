@@ -42,7 +42,6 @@
             "type": "path",
             "url": "custom-plugins/*",
             "options": {
-                "symlink": true,
                 "versions": {
                     "markxp/auto-meta-description": "1.0.0",
                     "markxp/http-103-early-hints": "1.0.0",
