@@ -143,6 +143,20 @@ if (env('IAP_AUDIENCE')) {
 }
 
 /**
+ * WP-Stateless Configuration
+ * Map any valid WP_STATELESS_* environment variables from $_ENV to WordPress constants.
+ */
+foreach (array_keys($_ENV) as $key) {
+    if (preg_match('/^WP_STATELESS_[A-Z0-9_]+$/', (string) $key) === 1) {
+        $value = env($key);
+        if ($value !== null && $value !== '') {
+            Config::define($key, $value);
+        }
+    }
+}
+unset($key, $value);
+
+/**
  * Custom Settings
  */
 Config::define('AUTOMATIC_UPDATER_DISABLED', true);
@@ -205,6 +219,7 @@ $scrub_keys = array_unique(array_merge(
         'NONCE_SALT',
         'GOOGLESITEKIT_ENCRYPTION_KEY',
         'GOOGLESITEKIT_ENCRYPTION_SALT',
+        'WP_STATELESS_MEDIA_JSON_KEY',
     ]
 ));
 foreach ($scrub_keys as $key) {
