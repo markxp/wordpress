@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -eu
 
 # Function to export variables from .env file
 load_env_file() {
@@ -16,46 +16,63 @@ load_env_file() {
 ROOT_DIR="${ROOT_DIR:-/var/www/html}"
 load_env_file "${ROOT_DIR}/.env"
 
-# 2. Apply PHP configurations (php.ini)
-# Using sed to swap default values as requested
+# 2. Apply PHP configurations (php.ini & conf.d runtime override)
 PHP_INI_FILE="${PHP_INI_DIR:-/usr/local/etc/php}/php.ini"
+PHP_CONF_DIR="${PHP_CONF_DIR:-${PHP_INI_SCAN_DIR:-/usr/local/etc/php/conf.d}}"
 
 if [ -f "$PHP_INI_FILE" ]; then
     sed -i \
-        -e "s/^memory_limit = 128M/memory_limit = ${MEM_LIMIT:-256M}/g" \
-        -e "s/^post_max_size = 8M/post_max_size = ${POST_MAX_SIZE:-64M}/g" \
-        -e "s/^upload_max_filesize = 2M/upload_max_filesize = ${UPLOAD_MAX_FILE_SIZE:-64M}/g" \
-        -e "s/^max_input_time = 60/max_input_time = ${MAX_INPUT_TIME:-30}/g" \
-        -e "s/^max_execution_time = 60/max_execution_time = ${MAX_EXECUTION_TIME:-30}/g" \
-        -e "s/^max_file_uploads = 20/max_file_uploads = ${MAX_FILE_UPLOADS:-3}/g" \
+        -e "s/^;\?memory_limit\s*=.*/memory_limit = ${MEM_LIMIT:-256M}/g" \
+        -e "s/^;\?post_max_size\s*=.*/post_max_size = ${POST_MAX_SIZE:-64M}/g" \
+        -e "s/^;\?upload_max_filesize\s*=.*/upload_max_filesize = ${UPLOAD_MAX_FILE_SIZE:-64M}/g" \
+        -e "s/^;\?max_input_time\s*=.*/max_input_time = ${MAX_INPUT_TIME:-30}/g" \
+        -e "s/^;\?max_execution_time\s*=.*/max_execution_time = ${MAX_EXECUTION_TIME:-30}/g" \
+        -e "s/^;\?max_file_uploads\s*=.*/max_file_uploads = ${MAX_FILE_UPLOADS:-20}/g" \
         "$PHP_INI_FILE" && \
-    echo "[PHP.ini] successfully swap environment variables"
+    echo "[PHP.ini] successfully swapped environment variables"
 else
-    echo "[PHP.ini] not found at $PHP_INI_FILE. Skipping substitutions."
+    echo "[PHP.ini] not found at $PHP_INI_FILE. Skipping direct substitutions."
+fi
+
+if [ -d "$PHP_CONF_DIR" ]; then
+    cat > "${PHP_CONF_DIR}/99-runtime-limits.ini" <<EOF
+memory_limit = ${MEM_LIMIT:-256M}
+post_max_size = ${POST_MAX_SIZE:-64M}
+upload_max_filesize = ${UPLOAD_MAX_FILE_SIZE:-64M}
+max_input_time = ${MAX_INPUT_TIME:-30}
+max_execution_time = ${MAX_EXECUTION_TIME:-30}
+max_file_uploads = ${MAX_FILE_UPLOADS:-20}
+EOF
 fi
 
 # 3. Apply PHP-FPM pool (www.conf) settings
-POOL_CONF="/usr/local/etc/php-fpm.d/www.conf"
+POOL_CONF="${PHP_FPM_POOL_CONF:-/usr/local/etc/php-fpm.d/www.conf}"
 if [ -f "$POOL_CONF" ]; then
     sed -i \
-        -e "s/^;pm.max_children = 5/pm.max_children = ${PM_MAX_CHILDREN:-5}/g" \
-        -e "s/^;request_terminate_timeout = 0/request_terminate_timeout = ${REQUEST_TERMINATE_TIMEOUT:-0}/g" \
-        -e "s/^;pm.status_listen = 127.0.0.1:9001/pm.status_listen = ${PM_STATUS_LISTEN:-127.0.0.1:9001}/g" \
-        -e "s|^;pm.status_path = /status|pm.status_path = /status|g" \
-        -e 's|^;access.format = "%r - %u %t \\"%m %r%q%q\\" %s %f %{milli}d %{kilo}m %c%%"|access.format = "%{x-real-ip}o %s %{request_method}e %{request_uri}e duration=%{milliseconds}d mem=%{megabytes}m cpu=%c%%"|g' \
-        -e 's|^;access.suppress_path\[\] = /health_check.php|access.suppress_path[] = /status|g' \
-        -e 's|^;slowlog = log/$pool.log.slow|slowlog = /dev/stderr|g' \
-        -e 's|^;request_slowlog_timeout = 0|request_slowlog_timeout = 3s|g' \
-        -e 's|^;chdir = /var/www|chdir = web|g' \
+        -e "s/^;\?pm = .*/pm = ${PM:-static}/g" \
+        -e "s/^;\?pm\.max_children = .*/pm.max_children = ${PM_MAX_CHILDREN:-5}/g" \
+        -e "s/^;\?request_terminate_timeout = .*/request_terminate_timeout = ${REQUEST_TERMINATE_TIMEOUT:-0}/g" \
+        -e "s/^;\?pm\.status_listen = .*/pm.status_listen = ${PM_STATUS_LISTEN:-127.0.0.1:9001}/g" \
+        -e "s|^;\?pm\.status_path = .*|pm.status_path = /status|g" \
+        -e 's|^;\?access\.format = .*|access.format = "%{HTTP_X_REAL_IP}e %s %m %{REQUEST_URI}e duration=%{milliseconds}d mem=%{megabytes}M cpu=%C%%"|g' \
+        -e 's|^;\?access\.suppress_path\[\] = /health_check\.php|access.suppress_path[] = /status|g' \
+        -e 's|^;\?slowlog = .*|slowlog = /proc/self/fd/2|g' \
+        -e 's|^;\?request_slowlog_timeout = .*|request_slowlog_timeout = 3s|g' \
+        -e "s|^;\?chdir = /var/www.*|chdir = ${ROOT_DIR}/web|g" \
         "$POOL_CONF" && \
-    cat << 'EOF' >> "$POOL_CONF"
+    if ! grep -q "^; --- entrypoint-env-exports ---$" "$POOL_CONF"; then
+        cat << 'EOF' >> "$POOL_CONF"
+
+; --- entrypoint-env-exports ---
 clear_env = yes
 env[PATH] = /usr/local/bin:/usr/bin:/bin
 env[TMP] = /tmp
 env[TMPDIR] = /tmp
 env[TEMP] = /tmp
 env[LIBMYSQL_ENABLE_CLEARTEXT_PLUGIN] = $LIBMYSQL_ENABLE_CLEARTEXT_PLUGIN
+env[OTEL_SDK_DISABLED] = $OTEL_SDK_DISABLED
 env[OTEL_PHP_AUTOLOAD_ENABLED] = $OTEL_PHP_AUTOLOAD_ENABLED
+env[OTEL_PHP_DISABLED_INSTRUMENTATIONS] = $OTEL_PHP_DISABLED_INSTRUMENTATIONS
 env[OTEL_SERVICE_NAME] = $OTEL_SERVICE_NAME
 env[OTEL_RESOURCE_ATTRIBUTES] = $OTEL_RESOURCE_ATTRIBUTES
 env[OTEL_PROPAGATORS] = $OTEL_PROPAGATORS
@@ -74,25 +91,24 @@ env[GOOGLE_APPLICATION_CREDENTIALS] = $GOOGLE_APPLICATION_CREDENTIALS
 env[GOOGLE_AUTH_SUPPRESS_CREDENTIALS_WARNING] = $GOOGLE_AUTH_SUPPRESS_CREDENTIALS_WARNING
 env[GCE_METADATA_HOST] = $GCE_METADATA_HOST
 EOF
-    echo "[PHP-FPM.conf] successfully swap environment variables" 
+    fi
+    echo "[PHP-FPM.conf] successfully swapped environment variables"
 else
-    echo "[PHP-FPM.conf] www.conf does not exist. Skip to modify" 
+    echo "[PHP-FPM.conf] www.conf does not exist at $POOL_CONF. Skipping modification."
 fi
 
 # 4. DEV_ON Logic (OpCache and Error Logging)
 DEV_ON="${DEV_ON:-false}"
-PHP_CONF_DIR="/usr/local/etc/php/conf.d"
 OPCACHE_CONF="${PHP_CONF_DIR}/opcache-recommended.ini"
 ERROR_CONF="${PHP_CONF_DIR}/error-logging.ini"
 
 if [ "$DEV_ON" = "true" ]; then
     echo "Development mode is ON. Applying development settings via sed..."
-    
+
     if [ -f "$OPCACHE_CONF" ]; then
         sed -i \
             -e "s/opcache.validate_timestamps=false/opcache.validate_timestamps=true/g" \
             "$OPCACHE_CONF"
-        # Ensure revalidate_freq is set (might not exist in the file)
         if ! grep -q "opcache.revalidate_freq" "$OPCACHE_CONF"; then
             echo "opcache.revalidate_freq=2" >> "$OPCACHE_CONF"
         else
@@ -110,7 +126,6 @@ if [ "$DEV_ON" = "true" ]; then
     fi
 else
     echo "Development mode is OFF. Ensuring production settings..."
-    # Production settings are baked into the image, but we can ensure they are enforced if needed
     if [ -f "$OPCACHE_CONF" ]; then
         sed -i "s/opcache.validate_timestamps=true/opcache.validate_timestamps=false/g" "$OPCACHE_CONF"
     fi
@@ -124,16 +139,24 @@ else
     fi
 fi
 
-if [ "$1" = 'php-fpm' ]; then
-	HEALTH_SERVER='/usr/local/bin/health-server'
-	CHECK_SCRIPT='/usr/local/bin/php-fpm-healthcheck'
-	if [ -x "$HEALTH_SERVER" -a -x "$CHECK_SCRIPT" ]; then
-		health-server > /proc/1/fd/1 2> /proc/1/fd/2 &
-	else
-		echo 'health-server or php-fpm-healthcheck does not exist. liveness probe is unavaliable.'
-	fi
+# Normalize flag-only invocations (e.g. `-F` -> `php-fpm -F`)
+if [ "${1#-}" != "$1" ]; then
+    set -- php-fpm "$@"
 fi
 
-# Execute the main command 
+if [ "$1" = 'php-fpm' ]; then
+    HEALTH_SERVER='/usr/local/bin/health-server'
+    CHECK_SCRIPT='/usr/local/bin/php-fpm-healthcheck'
+    if [ -x "$HEALTH_SERVER" ] && [ -x "$CHECK_SCRIPT" ]; then
+        health-server > /proc/1/fd/1 2> /proc/1/fd/2 &
+    else
+        echo 'health-server or php-fpm-healthcheck does not exist. liveness probe is unavailable.'
+    fi
+fi
+
+# Execute the main command
 echo "Starting application..."
-exec docker-php-entrypoint "$@"
+if command -v docker-php-entrypoint >/dev/null 2>&1; then
+    exec docker-php-entrypoint "$@"
+fi
+exec "$@"
