@@ -146,16 +146,16 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------------
-  # otel-collector – OpenTelemetry sidecar (Google-built image)
+  # otel-collector – OpenTelemetry Collector Contrib sidecar
   # Health check extension exposes http://:13133/ for readiness probes.
   # Config is file-mounted for local dev; in Cloud Run it comes from Secret Mgr.
   # ----------------------------------------------------------------------------
   otel-collector:
-    image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.164.0
+    image: otel/opentelemetry-collector-contrib:0.115.0
     # WORKAROUND: network_mode: "service:nginx" is broken in podman-compose 1.0.3
     network_mode: "container:nginx"
     volumes:
-      - ./otel-config.yaml:/etc/otelcol-google/config.yaml:ro,z
+      - ./otel-config.yaml:/etc/otelcol-contrib/config.yaml:ro,z
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:13133/"]
       interval: 15s

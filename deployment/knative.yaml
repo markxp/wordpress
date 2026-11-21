@@ -250,17 +250,17 @@ spec:
               memory: 64Mi
 
         # -----------------------------------------------------------------------
-        # otel-collector – Google-Built OpenTelemetry Collector
+        # otel-collector – OpenTelemetry Collector Contrib
         # Exposes OTLP gRPC :4317, OTLP HTTP :4318 on loopback.
         # Health check endpoint: http://:13133/ (required by Cloud Run).
         # Config is loaded from Secret Manager volume.
         # -----------------------------------------------------------------------
         - name: otel-collector
-          image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.164.0
+          image: otel/opentelemetry-collector-contrib:0.115.0
 
           volumeMounts:
             - name: otel-config
-              mountPath: /etc/otelcol-google/
+              mountPath: /etc/otelcol-contrib/
 
           startupProbe:
             httpGet:
