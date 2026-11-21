@@ -10,7 +10,7 @@ class BedrockStackSapiTest extends TestCase
 {
     private function request(string $path): array
     {
-        $baseUrl = rtrim((string) (getenv('SAPI_STACK_BASE_URL') ?: 'http://127.0.0.1:18080'), '/');
+        $baseUrl = rtrim((string) (getenv('SAPI_STACK_BASE_URL') ?: 'http://127.0.0.2:18080'), '/');
         $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 10]]);
         $body = file_get_contents($baseUrl . $path, false, $ctx);
         $headers = $http_response_header ?? [];

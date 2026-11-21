@@ -22,25 +22,28 @@ services:
 
   wordpress:
     container_name: wp-sapi-php-fpm
-    image: localhost/wordpress-sapi-test:latest
+    image: "${SAPI_WORDPRESS_IMAGE:-localhost/wordpress-sapi-test:latest}"
     build:
       context: ..
-      dockerfile: deployment/php-fpm.Dockerfile
+      dockerfile: "${SAPI_PHP_FPM_DOCKERFILE:-deployment/php-fpm.Dockerfile}"
       target: app
     network_mode: "container:wp-sapi-nginx"
     volumes:
-      - "${SAPI_ENV_FILE:-/dev/null}:/var/www/html/dotfiles/latest:ro"
+      - "${SAPI_DOTFILES_DIR:-./dotfiles}:/var/www/html/dotfiles:ro,z"
     environment:
       WP_ENV: testing
       WP_ENVIRONMENT_TYPE: local
-      DB_HOST: "127.0.0.1"
-      DB_NAME: wordpress
-      DB_USER: wordpress
-      DB_PASSWORD: wordpress_test_password
       PM: static
       PM_MAX_CHILDREN: "3"
       PM_STATUS_LISTEN: "9001"
+      HEALTH_PORT: "8082"
+      FCGI_CONNECT: "127.0.0.1:9001"
       OTEL_SDK_DISABLED: "true"
+      OTEL_PHP_AUTOLOAD_ENABLED: "false"
+      OTEL_PHP_DISABLED_INSTRUMENTATIONS: "all"
+      OTEL_TRACES_EXPORTER: "none"
+      OTEL_METRICS_EXPORTER: "none"
+      OTEL_LOGS_EXPORTER: "none"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/healthz"]
       interval: 5s
@@ -49,26 +52,34 @@ services:
     depends_on:
       nginx:
         condition: service_started
-      mariadb:
+      mysql:
         condition: service_healthy
     restart: "no"
 
-  mariadb:
-    container_name: wp-sapi-mariadb
-    image: mirror.gcr.io/library/mariadb:11
+  mysql:
+    container_name: wp-sapi-mysql
+    image: mirror.gcr.io/library/mysql:8.4
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_520_ci"
+      - "--default-time-zone=+00:00"
+      - "--innodb-flush-method=fsync"
+      - "--innodb-use-native-aio=0"
     network_mode: "container:wp-sapi-nginx"
     tmpfs:
       - /var/lib/mysql
+    volumes:
+      - "${SAPI_INIT_SQL:-/dev/null}:/docker-entrypoint-initdb.d/01-wp-mock.sql:ro"
     environment:
-      MARIADB_DATABASE: wordpress
-      MARIADB_USER: wordpress
-      MARIADB_PASSWORD: wordpress_test_password
-      MARIADB_ROOT_PASSWORD: root_test_password
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress_test_password
+      MYSQL_ROOT_PASSWORD: root_test_password
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-P", "3306", "--protocol=TCP", "-u", "wordpress", "-pwordpress_test_password"]
+      interval: 3s
       timeout: 3s
-      retries: 15
+      retries: 20
     depends_on:
       nginx:
         condition: service_started

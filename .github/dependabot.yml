@@ -3,6 +3,7 @@ updates:
   # Maintain dependencies for Composer (root)
   - package-ecosystem: "composer"
     directory: "/"
+    target-branch: "release-candidate"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
@@ -12,6 +13,7 @@ updates:
   # Maintain dependencies for custom plugins with external requirements
   - package-ecosystem: "composer"
     directory: "/custom-plugins/iap-auth-shield"
+    target-branch: "release-candidate"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
@@ -21,6 +23,7 @@ updates:
   # Maintain dependencies for Docker
   - package-ecosystem: "docker"
     directory: "/deployment"
+    target-branch: "release-candidate"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
