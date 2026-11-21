@@ -1,8 +1,7 @@
 # ==============================================================================
 # OpenTelemetry Collector Configuration
-# Google-Built OTel Collector for Cloud Run
-# Image: us-docker.pkg.dev/cloud-ops-agents-artifacts/
-#        google-cloud-opentelemetry-collector/otelcol-google:0.164.0
+# Open-Source OTel Collector Contrib for Cloud Run
+# Image: otel/opentelemetry-collector-contrib:0.115.0
 #
 # Optimized for Cloud Run request-based CPU throttling:
 # - Small batch sizes and short timeouts for low-latency flushing
