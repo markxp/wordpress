@@ -19,6 +19,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-candidate' }}
 
+env:
+  OTEL_PHP_DISABLED_INSTRUMENTATIONS: all
+
 jobs:
   sapi-stack:
     name: SAPI Stack (${{ matrix.stack.name }})
@@ -30,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -43,7 +46,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
@@ -54,10 +57,10 @@ jobs:
         run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build Nginx test image (cached)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/nginx.Dockerfile
@@ -67,7 +70,7 @@ jobs:
           cache-to: type=gha,scope=sapi-nginx,mode=max
 
       - name: Build PHP-FPM WordPress test image (${{ matrix.stack.name }})
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.stack.dockerfile }}

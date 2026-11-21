@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: release-candidate
 
@@ -35,7 +35,7 @@ jobs:
           echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request if updated
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           base: release-candidate
           commit-message: "chore(plugins): update google-site-kit-dev-settings to ${{ steps.update.outputs.version }}"
