@@ -4,12 +4,11 @@ A stateless WordPress plugin that provides identity-aware authentication and a R
 
 ## Features
 
-- **IAP JWT Verification**: Verifies Google IAP ES256 JWT assertions against Google's public keys (`https://www.gstatic.com/iap/verify/public_key`, cached via WordPress transients) to map verified Google identities to WordPress users.
-- **Auto-Login & Fast-Path Session Reuse**: Logs in recognized WordPress users automatically and skips redundant OpenSSL verification on subsequent authenticated requests when the session email matches the IAP header.
+- **IAP JWT Verification**: Verifies Google IAP ES256 JWT assertions against Google's public keys (`https://www.gstatic.com/iap/verify/public_key`, cached via WordPress transients with automatic key-rotation retry) to map verified Google identities to WordPress users.
+- **Opportunistic Auto-Login & Fast-Path Session Reuse**: Runs at `init` priority `0` to establish WordPress sessions whenever `HTTP_X_GOOG_IAP_JWT_ASSERTION` is present (while keeping public frontends open when absent), synchronizes newly minted auth cookies into `$_COOKIE` in memory to eliminate `wp-login.php?reauth=1` bounces, and skips redundant OpenSSL verification on subsequent authenticated requests when the session email and admin cookie match.
 - **REST API Firewall**:
-  - Protects sensitive REST API endpoints on IAP-gated instances.
-  - Whitelists common read-only (`GET`) endpoints (`/wp/v2/posts`, `/wp/v2/pages`, `/wp/v2/media`, `/wp/v2/categories`, `/wp/v2/tags`, `/wp/v2/taxonomies`, `/wp/v2/types`) for unauthenticated requests.
-  - Allows external `GET` and `POST` requests to `/wp/v2/comments`.
+  - Protects sensitive REST API endpoints and blocks anonymous write (`POST`/`PUT`/`DELETE`) requests—including unauthenticated `POST /wp/v2/comments`—with `401 rest_forbidden`.
+  - Whitelists common read-only (`GET`) endpoints (`/wp/v2/posts`, `/wp/v2/pages`, `/wp/v2/media`, `/wp/v2/categories`, `/wp/v2/tags`, `/wp/v2/taxonomies`, `/wp/v2/types`, `/wp/v2/comments`) for unauthenticated requests, customizable via `iap_auth_shield_api_whitelist`.
 - **Editor Origin Normalization**: Strips the internal IAP-protected Editor origin (`home_url()`) from local `/app/` and `/wp/` URLs (both HTML attributes and JSON-escaped Gutenberg block attributes) when saving post content so internal hostnames never leak to public readers.
 - **Stateless Configuration**: Controlled entirely via environment variables (`IAP_AUTH_ENABLED` and `IAP_AUDIENCE`) or PHP constants, allowing paired Reader/Editor instances sharing a database to exhibit asymmetric runtime behavior safely.
 

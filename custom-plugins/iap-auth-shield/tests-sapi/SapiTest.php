@@ -8,9 +8,14 @@ use PHPUnit\Framework\TestCase;
 
 class SapiTest extends TestCase
 {
-    private function request(string $path): array
+    private function request(string $path, string $method = 'GET'): array
     {
-        $ctx = stream_context_create(['http' => ['ignore_errors' => true]]);
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => $method,
+                'ignore_errors' => true,
+            ],
+        ]);
         $body = file_get_contents(getenv('SAPI_BASE_URL') . $path, false, $ctx);
         $headers = $http_response_header ?? [];
         preg_match('/HTTP\/\S+\s+(\d{3})/', $headers[0] ?? '', $m);
@@ -26,5 +31,9 @@ class SapiTest extends TestCase
         [$restStatus, , $restBody] = $this->request('/?scenario=rest_private');
         $this->assertSame(401, $restStatus);
         $this->assertSame('rest_forbidden', $restBody);
+
+        [$commentsPostStatus, , $commentsPostBody] = $this->request('/?scenario=rest_comments_post', 'POST');
+        $this->assertSame(401, $commentsPostStatus);
+        $this->assertSame('rest_forbidden', $commentsPostBody);
     }
 }
