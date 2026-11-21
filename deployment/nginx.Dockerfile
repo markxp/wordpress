@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM mirror.gcr.io/library/php:8.5.12-fpm AS compiler
+FROM mirror.gcr.io/library/php:8.5.13-fpm AS compiler
 WORKDIR /var/www/html
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
