@@ -16,7 +16,7 @@ COPY --from=mirror.gcr.io/composer/composer:latest /usr/bin/composer /usr/bin/co
 COPY composer.json composer.lock ./
 COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
-    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader --ignore-platform-reqs
+    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --classmap-authoritative --ignore-platform-reqs
 # copy our app
 COPY . .
 RUN set -eu; \

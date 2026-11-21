@@ -1,6 +1,7 @@
 {
     "preset": "psr12",
     "exclude": [
+        "deployment",
         "vendor",
         "web/wp",
         "web/app/plugins",

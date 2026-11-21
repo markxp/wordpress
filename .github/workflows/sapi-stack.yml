@@ -3,17 +3,15 @@ name: E2E SAPI Stack
 on:
   push:
     branches: ['main', 'release-candidate']
-    paths-ignore:
-      - '**.md'
-      - '.vscode/**'
-      - 'LICENSE'
   pull_request:
     branches: ['release-candidate', 'main']
-    paths-ignore:
-      - '**.md'
-      - '.vscode/**'
-      - 'LICENSE'
   workflow_dispatch:
+    inputs:
+      include_google24:
+        description: 'Also run companion Google Cloud Run google-24 PHP-FPM stack'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -29,23 +27,106 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stack: ${{ (github.ref == 'refs/heads/main' || github.base_ref == 'main' || github.event_name == 'workflow_dispatch') && fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"},{"name":"Google Cloud Run google-24","dockerfile":"deployment/php-fpm.google-24.Dockerfile","scope":"sapi-wp-google24"}]') || fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"}]') }}
+        stack: ${{ (github.event_name == 'workflow_dispatch' && inputs.include_google24) && fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"},{"name":"Google Cloud Run google-24","dockerfile":"deployment/php-fpm.google-24.Dockerfile","scope":"sapi-wp-google24"}]') || fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"}]') }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Detect relevant changes
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" != "pull_request" && "$EVENT_NAME" != "push" ]]; then
+            echo "Event '${EVENT_NAME}' always runs full suite."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED_FILES=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if git rev-parse --verify -q HEAD^2 >/dev/null 2>&1; then
+              CHANGED_FILES="$(git diff --name-only HEAD^1 HEAD)"
+            elif [[ -n "$PR_BASE_SHA" ]]; then
+              git fetch --no-tags --depth=1 origin "$PR_BASE_SHA" >/dev/null 2>&1 || true
+              if git cat-file -e "${PR_BASE_SHA}^{commit}" 2>/dev/null; then
+                CHANGED_FILES="$(git diff --name-only "$PR_BASE_SHA" HEAD)"
+              else
+                echo "Unable to resolve PR base commit ${PR_BASE_SHA}; running full suite."
+                echo "run=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              echo "New branch or missing previous SHA; running full suite."
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA" >/dev/null 2>&1 || true
+            fi
+            if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              CHANGED_FILES="$(git diff --name-only "$BEFORE_SHA" HEAD)"
+            else
+              echo "Previous commit ${BEFORE_SHA} unavailable; running full suite."
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "Empty diff detected; running full suite as safeguard."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES" | sed 's/^/  - /'
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              *.md | LICENSE | */LICENSE | .gitignore | */.gitignore | .dockerignore | .env.example) ;;
+              .vscode/* | .agents/* | deployment/*) ;;
+              .github/dependabot.yml | .github/workflows/lint-and-unit.yml | .github/workflows/plugin-sapi.yml | .github/workflows/update-site-kit-dev-settings.yml) ;;
+              bin/update-site-kit-dev-settings.sh) ;;
+              pint.json | phpunit.xml.dist | tests/Config/* | tests/bootstrap.php | tests/TestCase.php) ;;
+              custom-plugins/*/tests/* | custom-plugins/*/tests-sapi/* | custom-plugins/*/phpunit*.xml.dist | custom-plugins/*/readme.txt) ;;
+              custom-themes/*/tests/* | custom-themes/*/tests-sapi/* | custom-themes/*/phpunit*.xml.dist | custom-themes/*/readme.txt) ;;
+              *)
+                echo "Relevant change detected: ${file} -> running suite."
+                echo "run=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+          done <<< "$CHANGED_FILES"
+
+          echo "Only documentation, deployment, unit-test-only, or non-runtime files changed -> skipping heavy steps."
+          echo "run=false" >> "$GITHUB_OUTPUT"
 
       - name: Setup PHP 8.5
+        if: steps.filter.outputs.run == 'true'
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           coverage: none
 
       - name: Get Composer cache directory
+        if: steps.filter.outputs.run == 'true'
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer packages
+        if: steps.filter.outputs.run == 'true'
         uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
@@ -54,12 +135,15 @@ jobs:
             composer-${{ runner.os }}-
 
       - name: Install dependencies
+        if: steps.filter.outputs.run == 'true'
         run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
 
       - name: Set up Docker Buildx
+        if: steps.filter.outputs.run == 'true'
         uses: docker/setup-buildx-action@v4
 
       - name: Build Nginx test image (cached)
+        if: steps.filter.outputs.run == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -70,6 +154,7 @@ jobs:
           cache-to: type=gha,scope=sapi-nginx,mode=max
 
       - name: Build PHP-FPM WordPress test image (${{ matrix.stack.name }})
+        if: steps.filter.outputs.run == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -81,6 +166,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.stack.scope }},mode=max
 
       - name: Run root container SAPI stack tests (${{ matrix.stack.name }})
+        if: steps.filter.outputs.run == 'true'
         env:
           SAPI_SKIP_BUILD: '1'
           SAPI_PHP_FPM_DOCKERFILE: ${{ matrix.stack.dockerfile }}
