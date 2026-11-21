@@ -37,6 +37,7 @@
             "packages": [
                 "firebase/php-jwt"
             ],
+            "update_call_sites": true,
             "include_modified_date": false,
             "include_author": false
         }

@@ -17,7 +17,7 @@ GCP IAP Auth & API Shield (Stateless) provides identity-aware authentication and
 === Key Features ===
 * **IAP JWT Verification**: Validates Google IAP ES256 assertion tokens securely against Google's public keys.
 * **Seamless Auto-Login**: Automatically matches verified Google account emails to WordPress user profiles, generating an active session with fast-path session reuse.
-* **REST API Firewall**: Blocks unauthorized API access to sensitive endpoints for external users while maintaining public read access for whitelisted content routes (extensible via `iap_auth_shield_api_whitelist`) and comment submission.
+* **REST API Firewall**: Blocks unauthorized API access and anonymous write (`POST`) requests for external users while maintaining public read-only (`GET`) access for whitelisted content routes including `/wp/v2/comments` (extensible via `iap_auth_shield_api_whitelist`).
 * **Editor Origin Normalization**: Strips internal IAP-protected origins from local asset paths when saving post content.
 * **Fully Stateless**: Configuration is controlled completely through environment variables (`IAP_AUTH_ENABLED`, `IAP_AUDIENCE`), requiring no database options storage.
 

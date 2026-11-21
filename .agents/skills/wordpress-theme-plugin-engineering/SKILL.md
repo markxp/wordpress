@@ -26,7 +26,8 @@ This skill defines the standards, code conventions, and architectural best pract
    - Keep a self-contained `spl_autoload_register` fallback in the plugin's main `.php` entrypoint (checking `vendor-prefixed/autoload.php` before `vendor/autoload.php`) so the plugin remains portable to non-Composer WordPress installations.
 3. **Dependency Isolation & Standalone Packaging (`composer build:dist` + Strauss)**:
    - Keep `src/` using standard unprefixed Composer namespaces so Bedrock's flat dependency resolution and Dependabot work natively with zero committed vendor copies.
-   - When a plugin has third-party `require` dependencies, configure `extra.strauss` (`target_directory: "vendor-prefixed"`, `namespace_prefix`, `classmap_prefix`, `constant_prefix`, `packages`, `include_modified_date: false`) and provide an opt-in `composer build:dist` script that runs **Strauss** inside a temporary build directory to produce a conflict-free `<plugin-slug>.zip` (preserving third-party `LICENSE` files) without modifying `src/`.
+   - When a plugin has third-party `require` dependencies, configure `extra.strauss` (`target_directory: "vendor-prefixed"`, `namespace_prefix`, `classmap_prefix`, `constant_prefix`, `packages`, `update_call_sites: true`, `include_modified_date: false`) and provide an opt-in `composer build:dist` script that runs **Strauss** inside a temporary build directory to produce a conflict-free `<plugin-slug>.zip` (preserving third-party `LICENSE` files) without modifying the source repo's `src/`.
+   - **Important (`update_call_sites: true`)**: When `target_directory` is `"vendor-prefixed"` (instead of `"vendor"`), Strauss defaults `update_call_sites` to `false`, leaving `use` imports and `class_exists(...)` calls in the build copy of `src/` unprefixed. Setting `"update_call_sites": true` makes Strauss AST-rewrite both `use` statements and `class_exists(...)` references in the temporary build directory. Prefer `ClassName::class` over raw string literals for static analysis clarity.
    - Root-level builds and tests (`composer install`, `composer test`, `composer lint`, `composer docker-build`) must always use flat Composer mode and never trigger `build:dist`.
 4. **Required Documentation & Licensing**:
    - Every custom plugin must include:
@@ -36,6 +37,9 @@ This skill defines the standards, code conventions, and architectural best pract
 5. **Extensible Filters**:
    - Never hardcode irreversible routing, API restrictions, or blocks.
    - Expose extensible, plugin-namespaced filter hooks (e.g. `plugin_slug_allowed_rest_prefixes`) so external components can register custom rules cleanly without cross-plugin coupling.
+6. **Programmatic Authentication & Cookie Lifecycle**:
+   - `wp_set_auth_cookie()` emits `Set-Cookie` headers without populating `$_COOKIE` in the current PHP process. When authenticating users programmatically on `init` before `wp-admin/`'s `auth_redirect()`, sync `$_COOKIE` (`AUTH_COOKIE` / `SECURE_AUTH_COOKIE` / `LOGGED_IN_COOKIE`) via temporary `set_auth_cookie` and `set_logged_in_cookie` hooks so `auth_redirect()` succeeds in the same request without bouncing to `wp-login.php?reauth=1`.
+   - `wp-login.php` validates `LOGGED_IN_COOKIE` (path `/`), whereas `wp-admin/` requires `AUTH_COOKIE` / `SECURE_AUTH_COOKIE` (path `/wp/wp-admin/`). Never treat `is_user_logged_in()` on `wp-login.php` as proof of a valid admin cookie; verify `wp_validate_auth_cookie('', is_ssl() ? 'secure_auth' : 'auth')` before skipping cookie issuance.
 
 ---
 
@@ -85,7 +89,7 @@ The **Twin-Service (Reader/Editor split)** architecture is an infrastructure dep
     composer test:container
     ```
 - **Code Style & Formatting**:
-  - Enforce PSR-12 and Laravel Pint formatting across all PHP files:
+  - Enforce PSR-12 and Laravel Pint formatting across all PHP files (when running `vendor/bin/pint` manually inside a plugin subdirectory, pass `--config ../../pint.json` or `--config /workspace/pint.json` so Pint uses the monorepo PSR-12 config rather than the default Laravel preset):
     ```bash
     # Check formatting
     composer lint:container

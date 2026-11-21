@@ -8,10 +8,16 @@ use PHPUnit\Framework\TestCase;
 
 class BedrockStackSapiTest extends TestCase
 {
-    private function request(string $path): array
+    private function request(string $path, string $method = 'GET'): array
     {
         $baseUrl = rtrim((string) (getenv('SAPI_STACK_BASE_URL') ?: 'http://127.0.0.2:18080'), '/');
-        $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 10]]);
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => $method,
+                'ignore_errors' => true,
+                'timeout' => 10,
+            ],
+        ]);
         $body = file_get_contents($baseUrl . $path, false, $ctx);
         $headers = $http_response_header ?? [];
         preg_match('/HTTP\/\S+\s+(\d{3})/', $headers[0] ?? '', $m);
@@ -33,5 +39,12 @@ class BedrockStackSapiTest extends TestCase
         [$status] = $this->request('/wp-json/wp/v2/users');
 
         $this->assertContains($status, [401, 403]);
+    }
+
+    public function test_reader_stack_rejects_anonymous_rest_comments_post(): void
+    {
+        [$status] = $this->request('/wp-json/wp/v2/comments', 'POST');
+
+        $this->assertContains($status, [401, 403, 404, 405]);
     }
 }

@@ -29,6 +29,7 @@ class Plugin
         '/wp/v2/tags',
         '/wp/v2/taxonomies',
         '/wp/v2/types',
+        '/wp/v2/comments',
     ];
 
     public function __construct()
@@ -44,8 +45,8 @@ class Plugin
 
         // Functional Hooks (Only registered when both IAP_AUTH_ENABLED=true and IAP_AUDIENCE is set)
         if ($this->is_instance_on()) {
-            // Hook 1: Handle identity verification and auto-login (init stage)
-            add_action('init', [$this, 'handle_iap_authentication']);
+            // Hook 1: Handle identity verification and auto-login (init stage, priority 0 before priority-1 gatekeepers)
+            add_action('init', [$this, 'handle_iap_authentication'], 0);
 
             // Hook 2: REST API Firewall (Intercept before API dispatch)
             add_filter('rest_pre_dispatch', [$this, 'api_firewall'], 10, 3);
@@ -221,38 +222,52 @@ class Plugin
     }
 
     /**
-     * Core Logic 1: Handle backend access and identity mapping
+     * Core Logic 1: Handle backend access and opportunistic IAP identity mapping
      */
     public function handle_iap_authentication()
     {
-        // Only enforce verification on "backend admin pages" or "login page". Frontend is open to visitors.
-        if (!is_admin() && !in_array($GLOBALS['pagenow'] ?? '', ['wp-login.php'], true)) {
+        $is_login_page = in_array($GLOBALS['pagenow'] ?? '', ['wp-login.php'], true);
+        $is_protected_entry = is_admin() || $is_login_page;
+
+        $raw_jwt = $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] ?? null;
+        $jwt = is_string($raw_jwt) ? trim($raw_jwt) : '';
+
+        // Frontend remains open to visitors when no IAP assertion header is present.
+        if (!$is_protected_entry && $jwt === '') {
             return;
         }
 
         if (!$this->audience) {
-            wp_die('IAP Auth Configuration Error: IAP_AUDIENCE is missing. Backend access is disabled for security.', 'Configuration Error', ['response' => 500]);
+            if ($is_protected_entry) {
+                wp_die('IAP Auth Configuration Error: IAP_AUDIENCE is missing. Backend access is disabled for security.', 'Configuration Error', ['response' => 500]);
+            }
             return;
         }
 
-        $jwt = $_SERVER['HTTP_X_GOOG_IAP_JWT_ASSERTION'] ?? null;
-
-        // If trying to access wp-admin but without IAP JWT assertion header, block access.
-        if (!$jwt) {
+        // If trying to access wp-admin or wp-login.php without IAP JWT assertion header, block access.
+        if ($jwt === '') {
             wp_die('Access Denied: Missing IAP credentials. Please access through the correct domain.', 'Unauthorized', ['response' => 401]);
             return;
         }
 
-        // Fast-path: If the WordPress session is already authenticated and matches the IAP header email,
-        // skip expensive OpenSSL ES256 signature verification and database user lookup on subsequent requests.
+        // Fast-path: If the WordPress session is already authenticated, matches the IAP header email,
+        // and (on protected admin/login routes) holds a valid admin auth cookie, skip OpenSSL & DB lookup.
         if (is_user_logged_in()) {
             $current_user = function_exists('wp_get_current_user') ? wp_get_current_user() : null;
+            $current_user_id = is_object($current_user) && isset($current_user->ID) ? (int) $current_user->ID : 0;
             $current_email = is_object($current_user) && !empty($current_user->user_email) ? (string) $current_user->user_email : '';
             $header_email = $this->extract_iap_email_header();
-            if ($current_email !== '' && ($header_email === '' || strcasecmp($current_email, $header_email) === 0)) {
-                if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php') {
-                    wp_safe_redirect(admin_url());
-                    exit;
+            $has_valid_cookie = !$is_protected_entry
+                || ($current_user_id > 0 && $this->has_valid_admin_auth_cookie($current_user_id));
+
+            if (
+                $current_email !== ''
+                && $header_email !== ''
+                && strcasecmp($current_email, $header_email) === 0
+                && $has_valid_cookie
+            ) {
+                if ($is_login_page) {
+                    $this->handle_wp_login_completion();
                 }
                 return;
             }
@@ -261,7 +276,7 @@ class Plugin
         try {
             $payload = $this->verify_jwt($jwt);
         } catch (\Exception $e) {
-            wp_die('IAP Verification Failed: ' . $e->getMessage(), 'Forbidden', ['response' => 403]);
+            wp_die('IAP Verification Failed: ' . esc_html($e->getMessage()), 'Forbidden', ['response' => 403]);
             return;
         }
 
@@ -274,26 +289,113 @@ class Plugin
         $user = get_user_by('email', $email);
 
         if ($user) {
-            // Generate session cookie for auto-login
-            if (!is_user_logged_in() || wp_get_current_user()->user_email !== $email) {
-                wp_set_current_user($user->ID);
-                wp_set_auth_cookie($user->ID);
+            $current_user = is_user_logged_in() && function_exists('wp_get_current_user') ? wp_get_current_user() : null;
+            $current_email = is_object($current_user) && !empty($current_user->user_email) ? (string) $current_user->user_email : '';
+            $needs_cookie = !is_user_logged_in()
+                || strcasecmp($current_email, (string) $email) !== 0
+                || ($is_protected_entry && !$this->has_valid_admin_auth_cookie((int) $user->ID));
 
-                // Auto redirect to backend from wp-login.php
-                if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php') {
-                    wp_safe_redirect(admin_url());
-                    exit;
-                }
+            if ($needs_cookie) {
+                $this->establish_wp_session((int) $user->ID);
             }
-        } else {
-            // Google authenticated, but user account not found in WordPress database
-            wp_die("Your Google account ({$email}) verified successfully, but there is no corresponding user in the system. Please contact the administrator.", 'Unauthorized', ['response' => 403]);
+
+            if ($is_login_page) {
+                $this->handle_wp_login_completion();
+            }
             return;
+        }
+
+        if ($is_protected_entry) {
+            // Google authenticated, but user account not found in WordPress database
+            $escaped_email = esc_html((string) $email);
+            wp_die("Your Google account ({$escaped_email}) verified successfully, but there is no corresponding user in the system. Please contact the administrator.", 'Unauthorized', ['response' => 403]);
         }
     }
 
     /**
-     * Core Logic 2: REST API Firewall (Supports external comments)
+     * Establish the WordPress user session and immediately synchronize newly minted cookies
+     * into $_COOKIE so same-request auth_redirect() checks succeed without an extra redirect.
+     */
+    protected function establish_wp_session(int $user_id): void
+    {
+        $sync_auth_cookie = function ($auth_cookie, $expire = 0, $expiration = 0, $uid = 0, $scheme = ''): void {
+            if (!is_string($auth_cookie)) {
+                return;
+            }
+            if ($scheme === 'secure_auth' && defined('SECURE_AUTH_COOKIE')) {
+                $_COOKIE[SECURE_AUTH_COOKIE] = $auth_cookie;
+            } elseif ($scheme === 'auth' && defined('AUTH_COOKIE')) {
+                $_COOKIE[AUTH_COOKIE] = $auth_cookie;
+            }
+        };
+        $sync_logged_in_cookie = function ($logged_in_cookie): void {
+            if (is_string($logged_in_cookie) && defined('LOGGED_IN_COOKIE')) {
+                $_COOKIE[LOGGED_IN_COOKIE] = $logged_in_cookie;
+            }
+        };
+
+        add_action('set_auth_cookie', $sync_auth_cookie, 10, 5);
+        add_action('set_logged_in_cookie', $sync_logged_in_cookie, 10, 1);
+        try {
+            wp_set_current_user($user_id);
+            wp_set_auth_cookie($user_id);
+        } finally {
+            if (function_exists('remove_action')) {
+                remove_action('set_auth_cookie', $sync_auth_cookie, 10);
+                remove_action('set_logged_in_cookie', $sync_logged_in_cookie, 10);
+            }
+        }
+    }
+
+    /**
+     * Verify that the admin authentication cookie (SECURE_AUTH_COOKIE or AUTH_COOKIE)
+     * is valid for the expected user ID.
+     */
+    protected function has_valid_admin_auth_cookie(int $expected_user_id): bool
+    {
+        if (!function_exists('wp_validate_auth_cookie')) {
+            return true;
+        }
+
+        $scheme = (function_exists('is_ssl') && is_ssl()) ? 'secure_auth' : 'auth';
+
+        return (int) wp_validate_auth_cookie('', $scheme) === $expected_user_id;
+    }
+
+    /**
+     * Complete wp-login.php requests cleanly after IAP authentication has been established.
+     */
+    protected function handle_wp_login_completion(): void
+    {
+        if (!empty($_REQUEST['interim-login'])) {
+            echo '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body class="login interim-login-success"></body></html>';
+            $this->terminate_request();
+            return;
+        }
+
+        $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? $_REQUEST['action'] : 'login';
+        if ($action === '' || $action === 'login') {
+            $target = admin_url();
+            if (!empty($_REQUEST['redirect_to']) && is_string($_REQUEST['redirect_to'])) {
+                $target = function_exists('wp_validate_redirect')
+                    ? wp_validate_redirect($_REQUEST['redirect_to'], $target)
+                    : $target;
+            }
+            wp_safe_redirect($target);
+            $this->terminate_request();
+        }
+    }
+
+    /**
+     * Terminate the current PHP request (extracted for isolated unit testing).
+     */
+    protected function terminate_request(): void
+    {
+        exit;
+    }
+
+    /**
+     * Core Logic 2: REST API Firewall (Read-only public whitelist)
      */
     public function api_firewall($result, $server, $request)
     {
@@ -305,14 +407,7 @@ class Plugin
             return $result;
         }
 
-        // 2. Dedicated channel for comment functionality (Allow external visitors to POST/GET comments)
-        if (strpos($route, '/wp/v2/comments') === 0) {
-            if ($method === 'POST' || $method === 'GET') {
-                return $result;
-            }
-        }
-
-        // 3. Check regular whitelist (extensible via filter)
+        // 2. Check regular whitelist (extensible via filter)
         $whitelist = apply_filters('iap_auth_shield_api_whitelist', $this->api_whitelist);
         $is_whitelisted = false;
         foreach ($whitelist as $allowed_route) {
@@ -322,12 +417,12 @@ class Plugin
             }
         }
 
-        // 4. If within the regular whitelist and it's a GET request, allow the theme to fetch content smoothly
+        // 3. If within the regular whitelist and it's a GET request, allow the theme to fetch content smoothly
         if ($is_whitelisted && $method === 'GET') {
             return $result;
         }
 
-        // 5. Block all other operations
+        // 4. Block all other operations
         return new WP_Error(
             'rest_forbidden',
             'No permission to access this API endpoint.',
@@ -391,53 +486,111 @@ class Plugin
         return $pos !== false ? substr($raw, $pos + 1) : $raw;
     }
 
-    protected function get_google_iap_keys()
+    protected function get_google_iap_keys(bool $force_refresh = false)
     {
         $transient_key = 'gcp_iap_public_keys';
-        $keys = get_transient($transient_key);
+        $keys = $force_refresh ? false : get_transient($transient_key);
 
-        if (false === $keys) {
+        if ($force_refresh || !is_array($keys) || $keys === []) {
             $response = wp_remote_get('https://www.gstatic.com/iap/verify/public_key', ['timeout' => 3]);
             if (is_wp_error($response)) {
                 throw new \Exception('Unable to fetch Google public keys - ' . $response->get_error_message());
             }
+            if (function_exists('wp_remote_retrieve_response_code')) {
+                $code = (int) wp_remote_retrieve_response_code($response);
+                if ($code !== 200) {
+                    throw new \Exception('Unexpected HTTP status fetching Google public keys: ' . $code);
+                }
+            }
             $body = wp_remote_retrieve_body($response);
-            $keys = json_decode($body, true);
-            if ($keys) {
-                set_transient($transient_key, $keys, HOUR_IN_SECONDS);
+            $decoded = is_string($body) ? json_decode($body, true) : null;
+            if (!$this->is_valid_iap_key_map($decoded)) {
+                throw new \Exception('Invalid Google IAP public keys payload.');
+            }
+            $keys = $decoded;
+            set_transient($transient_key, $keys, HOUR_IN_SECONDS);
+        }
+
+        return $keys;
+    }
+
+    /**
+     * Ensure decoded IAP public keys form a non-empty associative map of non-empty string PEM values.
+     */
+    protected function is_valid_iap_key_map($keys): bool
+    {
+        if (!is_array($keys) || $keys === [] || array_is_list($keys) || isset($keys['error'])) {
+            return false;
+        }
+
+        foreach ($keys as $kid => $pem) {
+            if (trim((string) $kid) === '' || !is_string($pem) || trim($pem) === '') {
+                return false;
             }
         }
-        return $keys;
+
+        return true;
+    }
+
+    /**
+     * Extract the unverified key ID ("kid") from the JWT header segment.
+     */
+    protected function extract_jwt_kid(string $jwt): string
+    {
+        $parts = explode('.', $jwt, 3);
+        if (count($parts) !== 3 || $parts[0] === '') {
+            return '';
+        }
+
+        $remainder = strlen($parts[0]) % 4;
+        $padded = $remainder > 0 ? $parts[0] . str_repeat('=', 4 - $remainder) : $parts[0];
+        $raw = base64_decode(strtr($padded, '-_', '+/'), true);
+        if (!is_string($raw) || $raw === '') {
+            return '';
+        }
+
+        $header = json_decode($raw, true);
+
+        return is_array($header) && isset($header['kid']) && (is_string($header['kid']) || is_int($header['kid']))
+            ? (string) $header['kid']
+            : '';
     }
 
     protected function verify_jwt($jwt)
     {
-        if (!class_exists('Firebase\JWT\JWT')) {
+        if (!class_exists(JWT::class)) {
             throw new \Exception('Firebase\JWT\JWT class not found. Ensure Composer dependencies are installed.');
         }
 
         $public_keys = $this->get_google_iap_keys();
-        if (!$public_keys) {
+        $kid = is_string($jwt) ? $this->extract_jwt_kid($jwt) : '';
+        if ($kid !== '' && (!is_array($public_keys) || !isset($public_keys[$kid]))) {
+            $public_keys = $this->get_google_iap_keys(true);
+        }
+
+        if (!$public_keys || !is_array($public_keys)) {
             throw new \Exception('Public keys could not be loaded.');
         }
 
         $key_objects = [];
-        foreach ($public_keys as $kid => $pem) {
-            $key_objects[$kid] = new Key($pem, 'ES256');
+        foreach ($public_keys as $key_id => $pem) {
+            $key_objects[$key_id] = new Key($pem, 'ES256');
         }
 
         try {
-            $decoded = JWT::decode($jwt, $key_objects);
+            $decoded = JWT::decode((string) $jwt, $key_objects);
         } catch (\Exception $e) {
             throw new \Exception('JWT verification failed -> ' . $e->getMessage());
         }
 
-        if ($decoded->iss !== 'https://cloud.google.com/iap') {
-            throw new \Exception('Invalid issuer -> ' . $decoded->iss);
+        $issuer = isset($decoded->iss) && is_string($decoded->iss) ? $decoded->iss : '';
+        if ($issuer !== 'https://cloud.google.com/iap') {
+            throw new \Exception('Invalid issuer -> ' . $issuer);
         }
 
-        if ($decoded->aud !== $this->audience) {
-            throw new \Exception('Invalid audience. Expected: ' . $this->audience . ' but got: ' . $decoded->aud);
+        $audience = isset($decoded->aud) && is_string($decoded->aud) ? $decoded->aud : '';
+        if ($audience !== $this->audience) {
+            throw new \Exception('Invalid audience. Expected: ' . $this->audience . ' but got: ' . $audience);
         }
 
         return (array) $decoded;

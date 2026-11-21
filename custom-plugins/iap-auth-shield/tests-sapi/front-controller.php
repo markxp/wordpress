@@ -122,5 +122,30 @@ if (($_GET['scenario'] ?? '') === 'rest_private') {
     exit;
 }
 
+if (($_GET['scenario'] ?? '') === 'rest_comments_post') {
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'POST';
+    $request = new class ($method) {
+        public function __construct(private string $method)
+        {
+        }
+        public function get_route(): string
+        {
+            return '/wp/v2/comments';
+        }
+        public function get_method(): string
+        {
+            return $this->method;
+        }
+    };
+    $res = apply_filters('rest_pre_dispatch', null, null, $request);
+    if ($res instanceof WP_Error) {
+        http_response_code((int) ($res->get_error_data()['status'] ?? 401));
+        echo $res->get_error_code();
+        exit;
+    }
+    echo 'allowed';
+    exit;
+}
+
 do_action('init');
 echo 'ok';
