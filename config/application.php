@@ -34,6 +34,46 @@ $webroot_dir = $root_dir . '/web';
  * Use Dotenv to set required environment variables and load .env file in root
  * .env.local will override .env if it exists
  */
+$config_key_groups = [
+    'bedrock' => [
+        'WP_ENV',
+        'WP_ENVIRONMENT_TYPE',
+        'WP_HOME',
+        'WP_SITEURL',
+        'DB_NAME',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_HOST',
+        'DB_PREFIX',
+        'DB_SSL',
+        'DATABASE_URL',
+        'AUTH_KEY',
+        'SECURE_AUTH_KEY',
+        'LOGGED_IN_KEY',
+        'NONCE_KEY',
+        'AUTH_SALT',
+        'SECURE_AUTH_SALT',
+        'LOGGED_IN_SALT',
+        'NONCE_SALT',
+        'DISABLE_WP_CRON',
+        'DISALLOW_FILE_MODS',
+        'DISALLOW_INDEXING',
+        'WP_POST_REVISIONS',
+        'WP_DEBUG_LOG',
+    ],
+    'google-site-kit' => [
+        'GOOGLESITEKIT_ENCRYPTION_KEY',
+        'GOOGLESITEKIT_ENCRYPTION_SALT',
+    ],
+    'iap-auth-shield' => [
+        'IAP_AUTH_ENABLED',
+        'IAP_AUDIENCE',
+    ],
+    'wp-stateless' => [
+        'WP_STATELESS_MEDIA_JSON_KEY',
+    ],
+];
+
 $dotenv_loaded_vars = [];
 if (file_exists($root_dir . '/.env')) {
     $env_files = file_exists($root_dir . '/.env.local')
@@ -43,10 +83,25 @@ if (file_exists($root_dir . '/.env')) {
     $dotenv = Dotenv\Dotenv::createImmutable($root_dir, $env_files, false);
 
     $dotenv_loaded_vars = $dotenv->load();
+}
 
-    if (!env('DATABASE_URL')) {
-        $dotenv->required(['DB_NAME', 'DB_USER', 'DB_PASSWORD']);
+foreach (array_unique(array_merge(array_keys($_ENV), array_keys($_SERVER))) as $key) {
+    if (preg_match('/^WP_STATELESS_[A-Z0-9_]+$/', (string) $key) === 1) {
+        $config_key_groups['wp-stateless'][] = (string) $key;
     }
+}
+$config_key_groups['wp-stateless'] = array_values(array_unique($config_key_groups['wp-stateless']));
+
+$managed_config_keys = array_values(array_unique(array_merge(...array_values($config_key_groups))));
+
+foreach ($managed_config_keys as $key) {
+    if (!array_key_exists($key, $_ENV) && array_key_exists($key, $_SERVER) && is_scalar($_SERVER[$key])) {
+        $_ENV[$key] = (string) $_SERVER[$key];
+    }
+}
+
+if (isset($dotenv) && !env('DATABASE_URL')) {
+    $dotenv->required(['DB_NAME', 'DB_USER', 'DB_PASSWORD']);
 }
 
 /**
@@ -66,17 +121,21 @@ if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
     $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
 }
 
-if (isset($_SERVER['HTTP_HOST'])) {
-    $http_host = $_SERVER['HTTP_HOST'];
+if (isset($_SERVER['HTTP_HOST']) && preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', (string) $_SERVER['HTTP_HOST']) === 1) {
+    $http_host = (string) $_SERVER['HTTP_HOST'];
     $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
     $dynamic_home = "{$protocol}://{$http_host}";
     Config::define('WP_HOME', $dynamic_home);
     Config::define('WP_SITEURL', "{$dynamic_home}/wp");
-} elseif (env('WP_HOME')) {
-    Config::define('WP_HOME', env('WP_HOME'));
-    Config::define('WP_SITEURL', env('WP_SITEURL') ?: env('WP_HOME') . '/wp');
 } else {
-    throw new \RuntimeException('Environment variable WP_HOME is required for CLI commands when HTTP_HOST is not available.');
+    unset($_SERVER['HTTP_HOST'], $_SERVER['HTTP_X_FORWARDED_HOST']);
+
+    if (env('WP_HOME')) {
+        Config::define('WP_HOME', env('WP_HOME'));
+        Config::define('WP_SITEURL', env('WP_SITEURL') ?: env('WP_HOME') . '/wp');
+    } else {
+        throw new \RuntimeException('Environment variable WP_HOME is required for CLI commands when HTTP_HOST is not available.');
+    }
 }
 
 /**
@@ -144,14 +203,12 @@ if (env('IAP_AUDIENCE')) {
 
 /**
  * WP-Stateless Configuration
- * Map any valid WP_STATELESS_* environment variables from $_ENV to WordPress constants.
+ * Map any valid WP_STATELESS_* environment variables from $_ENV / $_SERVER to WordPress constants.
  */
-foreach (array_keys($_ENV) as $key) {
-    if (preg_match('/^WP_STATELESS_[A-Z0-9_]+$/', (string) $key) === 1) {
-        $value = env($key);
-        if ($value !== null && $value !== '') {
-            Config::define($key, $value);
-        }
+foreach ($config_key_groups['wp-stateless'] as $key) {
+    $value = env($key);
+    if ($value !== null && $value !== '') {
+        Config::define($key, $value);
     }
 }
 unset($key, $value);
@@ -201,33 +258,14 @@ Config::apply();
  */
 $scrub_keys = array_unique(array_merge(
     array_keys($dotenv_loaded_vars),
-    [
-        'DB_NAME',
-        'DB_USER',
-        'DB_PASSWORD',
-        'DB_HOST',
-        'DB_PREFIX',
-        'DB_SSL',
-        'DATABASE_URL',
-        'AUTH_KEY',
-        'SECURE_AUTH_KEY',
-        'LOGGED_IN_KEY',
-        'NONCE_KEY',
-        'AUTH_SALT',
-        'SECURE_AUTH_SALT',
-        'LOGGED_IN_SALT',
-        'NONCE_SALT',
-        'GOOGLESITEKIT_ENCRYPTION_KEY',
-        'GOOGLESITEKIT_ENCRYPTION_SALT',
-        'WP_STATELESS_MEDIA_JSON_KEY',
-    ]
+    $managed_config_keys
 ));
 foreach ($scrub_keys as $key) {
     if (!str_starts_with((string) $key, 'OTEL_')) {
         unset($_ENV[$key], $_SERVER[$key]);
     }
 }
-unset($dotenv_loaded_vars, $scrub_keys);
+unset($dotenv, $dotenv_loaded_vars, $config_key_groups, $managed_config_keys, $scrub_keys, $key, $value);
 
 /**
  * Bootstrap WordPress
