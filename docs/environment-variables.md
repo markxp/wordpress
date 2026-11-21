@@ -89,8 +89,8 @@ Immediately after `Config::apply()` defines immutable PHP constants for WordPres
 Before constructing dynamic `WP_HOME` and `WP_SITEURL` values on web requests, `config/application.php` validates the incoming host header against:
 
 ```text
-/^[a-z0-9.-]+(?::\d+)?$/i
+/^(?:\[[a-f0-9:]+\]|[a-z0-9.-]+)(?::\d+)?\z/i
 ```
 
-- **Valid hostnames / IPv4 + port** (e.g. `blog.example.com`, `127.0.0.1:18080`): Used with `HTTP_X_FORWARDED_PROTO` (`https` vs `http`) to define `WP_HOME` and `WP_SITEURL`.
+- **Valid hostnames / IPv4 / bracketed IPv6 + port** (e.g. `blog.example.com`, `127.0.0.1:18080`, `[::1]:8080`): Used with `HTTP_X_FORWARDED_PROTO` (`https` vs `http`) to define `WP_HOME` and `WP_SITEURL`. Empty `HTTP_X_FORWARDED_HOST` values (e.g. from Nginx `fastcgi_param HTTP_X_FORWARDED_HOST "";`) are ignored and `unset()` rather than overwriting `HTTP_HOST`.
 - **Malformed or poisoned host headers** (e.g. path suffixes, XSS characters, comma-separated proxy chains, or `user@host` authority tricks): Rejected immediately; both `$_SERVER['HTTP_HOST']` and `$_SERVER['HTTP_X_FORWARDED_HOST']` are `unset()` so downstream WordPress Core and plugins cannot consume the poisoned header, and configuration falls back to `WP_HOME` (or throws a `RuntimeException` if `WP_HOME` is unset).
