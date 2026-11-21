@@ -54,7 +54,7 @@ Configurations are defined in `config/application.php` and loaded using [`phpdot
 WordPress requires canonical home and site URLs. In this repository, URL resolution uses the following precedence:
 
 1. **Primary: Dynamic Request Host (HTTP Web Requests)**:
-   For incoming HTTP requests, `config/application.php` validates `HTTP_X_FORWARDED_HOST` / `HTTP_HOST` against `/^[a-z0-9.-]+(?::\d+)?$/i` and dynamically resolves `WP_HOME` and `WP_SITEURL` from the validated host and `HTTP_X_FORWARDED_PROTO` (unsetting malformed host headers and falling back to `WP_HOME` if validation fails):
+   For incoming HTTP requests, `config/application.php` validates `HTTP_X_FORWARDED_HOST` / `HTTP_HOST` against `/^(?:\[[a-f0-9:]+\]|[a-z0-9.-]+)(?::\d+)?\z/i` and dynamically resolves `WP_HOME` and `WP_SITEURL` from the validated host and `HTTP_X_FORWARDED_PROTO` (ignoring empty `HTTP_X_FORWARDED_HOST`, unsetting malformed host headers, and falling back to `WP_HOME` if validation fails):
    ```php
    $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
    $dynamic_home = "{$protocol}://{$http_host}";

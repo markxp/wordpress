@@ -482,8 +482,13 @@ class ApplicationConfigTest extends TestCase
     ): void {
         $result = $this->evaluateApplicationConfig(
             serverVars: $serverVars,
-            inspectConstants: ['WP_HOME', 'WP_SITEURL']
+            inspectConstants: ['WP_HOME', 'WP_SITEURL'],
+            inspectSuperglobalKeys: ['HTTP_X_FORWARDED_HOST']
         );
+
+        if (isset($serverVars['HTTP_X_FORWARDED_HOST']) && $serverVars['HTTP_X_FORWARDED_HOST'] === '') {
+            $this->assertFalse($result['server']['HTTP_X_FORWARDED_HOST']);
+        }
 
         $this->assertSame(
             ['defined' => true, 'value' => $expectedHome, 'type' => 'string'],
@@ -511,6 +516,20 @@ class ApplicationConfigTest extends TestCase
                 'http://127.0.0.1:18080',
                 'http://127.0.0.1:18080/wp',
             ],
+            'ipv6 bracketed host with port' => [
+                ['HTTP_HOST' => '[::1]:8080'],
+                'http://[::1]:8080',
+                'http://[::1]:8080/wp',
+            ],
+            'empty forwarded host preserves http host' => [
+                [
+                    'HTTP_HOST' => 'blog.example.com',
+                    'HTTP_X_FORWARDED_HOST' => '',
+                    'HTTP_X_FORWARDED_PROTO' => 'https',
+                ],
+                'https://blog.example.com',
+                'https://blog.example.com/wp',
+            ],
             'forwarded host with https proto' => [
                 [
                     'HTTP_HOST' => 'internal-service.run.app',
@@ -533,6 +552,7 @@ class ApplicationConfigTest extends TestCase
             'xss payload' => ['evil.com"><script>'],
             'comma-separated forwarded hosts' => ['a.com, b.com'],
             'userinfo injection' => ['user@evil.com'],
+            'trailing newline' => ["evil.com\n"],
         ];
     }
 
