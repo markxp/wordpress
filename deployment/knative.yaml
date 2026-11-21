@@ -256,7 +256,7 @@ spec:
         # Config is loaded from Secret Manager volume.
         # -----------------------------------------------------------------------
         - name: otel-collector
-          image: otel/opentelemetry-collector-contrib:0.115.0
+          image: otel/opentelemetry-collector-contrib:0.165.0
 
           volumeMounts:
             - name: otel-config
