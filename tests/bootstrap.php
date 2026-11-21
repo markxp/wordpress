@@ -111,5 +111,37 @@ if (!class_exists('WP_Scripts')) {
     }
 }
 
+if (!class_exists('WP_Duotone')) {
+    class WP_Duotone
+    {
+        public static array $calls = [];
+        public static $onOutputBlockStyles = null;
+        public static $onOutputGlobalStyles = null;
+
+        public static function reset(): void
+        {
+            self::$calls = [];
+            self::$onOutputBlockStyles = null;
+            self::$onOutputGlobalStyles = null;
+        }
+
+        public static function output_block_styles(): void
+        {
+            self::$calls[] = 'output_block_styles';
+            if (is_callable(self::$onOutputBlockStyles)) {
+                (self::$onOutputBlockStyles)();
+            }
+        }
+
+        public static function output_global_styles(): void
+        {
+            self::$calls[] = 'output_global_styles';
+            if (is_callable(self::$onOutputGlobalStyles)) {
+                (self::$onOutputGlobalStyles)();
+            }
+        }
+    }
+}
+
 // Load base TestCase
 require_once __DIR__ . '/TestCase.php';

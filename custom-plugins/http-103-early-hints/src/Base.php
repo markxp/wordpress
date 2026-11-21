@@ -8,8 +8,9 @@
 
 namespace Http103EarlyHints;
 
-use WP_Styles;
+use WP_Duotone;
 use WP_Scripts;
+use WP_Styles;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -18,6 +19,8 @@ if (!defined('ABSPATH')) {
 abstract class Base
 {
     public const DEFAULT_INLINE_SIZE_LIMIT = 0;
+
+    protected bool $restore_skip_link = false;
 
     public function __construct()
     {
@@ -73,10 +76,31 @@ abstract class Base
 
         // 1. Trigger the standard scripts and styles enqueuing hooks early.
         // This populates the $wp_styles->queue and $wp_scripts->queue.
-        // Unhook wp_enqueue_scripts from wp_head afterwards so callbacks and inline styles do not execute twice.
+        // Unhook wp_enqueue_scripts from wp_head afterwards so callbacks and inline styles do not execute twice,
+        // and hook enqueue_post_render_block_styles at wp_head priority 1 to flush Block Theme styles
+        // populated during get_the_block_template_html() (between template_redirect and wp_head).
         if (!did_action('wp_enqueue_scripts')) {
+            $this->restore_skip_link = false;
+            $preserve_skip_link = function_exists('has_action')
+                && (bool) has_action('wp_footer', 'the_block_template_skip_link')
+                && (bool) has_action('wp_enqueue_scripts', 'wp_enqueue_block_template_skip_link');
+
             do_action('wp_enqueue_scripts');
             remove_action('wp_head', 'wp_enqueue_scripts', 1);
+
+            if ($preserve_skip_link && function_exists('wp_is_block_theme') && wp_is_block_theme()) {
+                $this->restore_skip_link = true;
+                add_action('wp_footer', 'the_block_template_skip_link');
+            }
+
+            $requeue_inline_styles = function_exists('has_action')
+                && has_action('wp_head', 'wp_maybe_inline_styles') === 1;
+
+            add_action('wp_head', [$this, 'enqueue_post_render_block_styles'], 1);
+
+            if ($requeue_inline_styles && remove_action('wp_head', 'wp_maybe_inline_styles', 1)) {
+                add_action('wp_head', 'wp_maybe_inline_styles', 1);
+            }
         }
 
         // 2. Resolve all dependencies so we get the complete list of assets that will be printed.
@@ -234,6 +258,50 @@ abstract class Base
             }
 
             $this->send_link_header(implode(', ', $link_headers));
+        }
+    }
+
+    /**
+     * Flush Block Theme styles populated during get_the_block_template_html().
+     *
+     * Because inspect_and_emit_link_headers() runs wp_enqueue_scripts early during
+     * template_redirect and unhooks it from wp_head, block-render-dependent style
+     * callbacks must be re-invoked at wp_head priority 1 (before wp_print_styles at 8)
+     * in WordPress core's exact dependency order.
+     */
+    public function enqueue_post_render_block_styles(): void
+    {
+        if (function_exists('wp_is_block_theme') && !wp_is_block_theme()) {
+            return;
+        }
+
+        if ($this->restore_skip_link && function_exists('wp_enqueue_block_template_skip_link')) {
+            $this->restore_skip_link = false;
+            wp_enqueue_block_template_skip_link();
+        }
+
+        if (function_exists('wp_enqueue_block_style_variation_styles')) {
+            wp_enqueue_block_style_variation_styles();
+        }
+
+        if (function_exists('wp_enqueue_block_custom_css')) {
+            wp_enqueue_block_custom_css();
+        }
+
+        if (class_exists('WP_Duotone') && method_exists('WP_Duotone', 'output_block_styles')) {
+            WP_Duotone::output_block_styles();
+        }
+
+        if (function_exists('wp_enqueue_stored_styles')) {
+            global $wp_styles;
+            if ($wp_styles instanceof WP_Styles && isset($wp_styles->registered['core-block-supports'])) {
+                unset($wp_styles->registered['core-block-supports']);
+            }
+            wp_enqueue_stored_styles();
+        }
+
+        if (class_exists('WP_Duotone') && method_exists('WP_Duotone', 'output_global_styles')) {
+            WP_Duotone::output_global_styles();
         }
     }
 

@@ -9,6 +9,7 @@ use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 use Http103EarlyHints\Base;
 use Tests\TestCase;
+use WP_Duotone;
 use WP_Scripts;
 use WP_Styles;
 
@@ -30,6 +31,12 @@ class TestableEarlyHints extends Base
 
 class BaseEngineTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        WP_Duotone::reset();
+    }
+
     public function test_constructor_registers_hooks(): void
     {
         Actions\expectAdded('template_redirect')->once();
@@ -448,6 +455,7 @@ class BaseEngineTest extends TestCase
 
         Actions\expectDone('wp_enqueue_scripts')->never();
         Actions\expectRemoved('wp_head')->never();
+        Actions\expectAdded('wp_head')->never();
 
         global $wp_styles, $wp_scripts;
         $wp_styles = new WP_Styles();
@@ -469,8 +477,120 @@ class BaseEngineTest extends TestCase
         Functions\when('get_option')->justReturn('0');
         Functions\when('site_url')->returnArg();
 
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+
         Actions\expectDone('wp_enqueue_scripts')->once();
         Actions\expectRemoved('wp_head')->once()->with('wp_enqueue_scripts', 1);
+        Actions\expectAdded('wp_head')->once()->with([$instance, 'enqueue_post_render_block_styles'], 1);
+
+        $instance->inspect_and_emit_link_headers();
+
+        $this->assertNull($instance->emittedHeader);
+    }
+
+    public function test_enqueue_post_render_block_styles_executes_callbacks_in_core_dependency_order(): void
+    {
+        Functions\when('wp_is_block_theme')->justReturn(true);
+
+        $executionOrder = [];
+
+        Functions\when('wp_enqueue_block_style_variation_styles')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_block_style_variation_styles';
+        });
+        Functions\when('wp_enqueue_block_custom_css')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_block_custom_css';
+        });
+        WP_Duotone::$onOutputBlockStyles = static function () use (&$executionOrder): void {
+            $executionOrder[] = 'WP_Duotone::output_block_styles';
+        };
+        Functions\when('wp_enqueue_stored_styles')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_stored_styles';
+        });
+        WP_Duotone::$onOutputGlobalStyles = static function () use (&$executionOrder): void {
+            $executionOrder[] = 'WP_Duotone::output_global_styles';
+        };
+
+        $instance = new TestableEarlyHints();
+        $instance->enqueue_post_render_block_styles();
+
+        $this->assertSame(
+            [
+                'wp_enqueue_block_style_variation_styles',
+                'wp_enqueue_block_custom_css',
+                'WP_Duotone::output_block_styles',
+                'wp_enqueue_stored_styles',
+                'WP_Duotone::output_global_styles',
+            ],
+            $executionOrder,
+        );
+        $this->assertLessThan(
+            array_search('wp_enqueue_stored_styles', $executionOrder, true),
+            array_search('WP_Duotone::output_block_styles', $executionOrder, true),
+        );
+    }
+
+    public function test_enqueue_post_render_block_styles_resets_stale_core_block_supports_handle_before_recompiling(): void
+    {
+        Functions\when('wp_is_block_theme')->justReturn(true);
+        Functions\when('wp_enqueue_block_style_variation_styles')->justReturn(null);
+        Functions\when('wp_enqueue_block_custom_css')->justReturn(null);
+
+        global $wp_styles;
+        $wp_styles = new WP_Styles();
+        $wp_styles->registered['core-block-supports'] = (object) [
+            'src' => false,
+            'extra' => ['after' => ['.stale-rule{color:red;}']],
+        ];
+
+        $wasClearedBeforeStoredStyles = false;
+        Functions\when('wp_enqueue_stored_styles')->alias(static function () use (&$wasClearedBeforeStoredStyles): void {
+            global $wp_styles;
+            $wasClearedBeforeStoredStyles = !isset($wp_styles->registered['core-block-supports']);
+            $wp_styles->registered['core-block-supports'] = (object) [
+                'src' => false,
+                'extra' => ['after' => ['.fresh-compiled-rule{display:flex;}']],
+            ];
+        });
+
+        $instance = new TestableEarlyHints();
+        $instance->enqueue_post_render_block_styles();
+
+        $this->assertTrue($wasClearedBeforeStoredStyles);
+        $this->assertSame(
+            ['.fresh-compiled-rule{display:flex;}'],
+            $wp_styles->registered['core-block-supports']->extra['after'],
+        );
+    }
+
+    public function test_enqueue_post_render_block_styles_bails_on_classic_theme(): void
+    {
+        Functions\when('wp_is_block_theme')->justReturn(false);
+        Functions\expect('wp_enqueue_stored_styles')->never();
+
+        $instance = new TestableEarlyHints();
+        $instance->enqueue_post_render_block_styles();
+
+        $this->assertSame([], WP_Duotone::$calls);
+    }
+
+    public function test_inspect_and_emit_link_headers_preserves_block_template_skip_link_when_active(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('wp_is_block_theme')->justReturn(true);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(0);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+
+        // Simulate WordPress default-filters.php skip-link hooks before template_redirect.
+        add_action('wp_footer', 'the_block_template_skip_link');
+        add_action('wp_enqueue_scripts', 'wp_enqueue_block_template_skip_link');
 
         global $wp_styles, $wp_scripts;
         $wp_styles = new WP_Styles();
@@ -478,9 +598,142 @@ class BaseEngineTest extends TestCase
 
         $instance = new TestableEarlyHints();
         $instance->mockHeadersSent = false;
+
+        // During early wp_enqueue_scripts, core unhooks the_block_template_skip_link from wp_footer
+        // and exits before enqueuing wp-block-template-skip-link because $_wp_current_template_content is null.
+        Actions\expectDone('wp_enqueue_scripts')
+            ->once()
+            ->whenHappen(static function (): void {
+                remove_action('wp_footer', 'the_block_template_skip_link');
+            });
+        Actions\expectAdded('wp_footer')->once()->with('the_block_template_skip_link', 10, 1);
+        Actions\expectAdded('wp_head')->once()->with([$instance, 'enqueue_post_render_block_styles'], 1, 1);
+
         $instance->inspect_and_emit_link_headers();
 
-        $this->assertNull($instance->emittedHeader);
+        // Skip-link footer action must remain active for get_the_block_template_html() to inject #wp-skip-link.
+        $this->assertNotFalse(has_action('wp_footer', 'the_block_template_skip_link'));
+
+        $executionOrder = [];
+        Functions\when('wp_enqueue_block_template_skip_link')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_block_template_skip_link';
+            remove_action('wp_footer', 'the_block_template_skip_link');
+        });
+        Functions\when('wp_enqueue_block_style_variation_styles')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_block_style_variation_styles';
+        });
+        Functions\when('wp_enqueue_block_custom_css')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_block_custom_css';
+        });
+        Functions\when('wp_enqueue_stored_styles')->alias(static function () use (&$executionOrder): void {
+            $executionOrder[] = 'wp_enqueue_stored_styles';
+        });
+
+        $instance->enqueue_post_render_block_styles();
+
+        $this->assertSame('wp_enqueue_block_template_skip_link', $executionOrder[0]);
+        $this->assertFalse(has_action('wp_footer', 'the_block_template_skip_link'));
+
+        // Calling enqueue_post_render_block_styles again must not re-trigger skip-link restoration.
+        $executionOrder = [];
+        $instance->enqueue_post_render_block_styles();
+        $this->assertNotContains('wp_enqueue_block_template_skip_link', $executionOrder);
+    }
+
+    public function test_inspect_and_emit_link_headers_respects_skip_link_opt_out_when_unhooked(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('wp_is_block_theme')->justReturn(true);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(0);
+        Functions\when('get_option')->justReturn('0');
+        Functions\when('site_url')->returnArg();
+        Functions\when('wp_enqueue_block_style_variation_styles')->justReturn(null);
+        Functions\when('wp_enqueue_block_custom_css')->justReturn(null);
+        Functions\when('wp_enqueue_stored_styles')->justReturn(null);
+
+        // Simulate a plugin opting out via remove_action('wp_footer', 'the_block_template_skip_link').
+        add_action('wp_enqueue_scripts', 'wp_enqueue_block_template_skip_link');
+
+        global $wp_styles, $wp_scripts;
+        $wp_styles = new WP_Styles();
+        $wp_scripts = new WP_Scripts();
+
+        $instance = new TestableEarlyHints();
+        $instance->mockHeadersSent = false;
+
+        Actions\expectAdded('wp_footer')->never();
+        Functions\expect('wp_enqueue_block_template_skip_link')->never();
+
+        $instance->inspect_and_emit_link_headers();
+        $instance->enqueue_post_render_block_styles();
+
+        $this->assertFalse(has_action('wp_footer', 'the_block_template_skip_link'));
+    }
+
+    public function test_inspect_and_emit_link_headers_requeues_wp_maybe_inline_styles_after_post_render_block_styles_when_inline_limit_positive(): void
+    {
+        Functions\when('is_admin')->justReturn(false);
+        Functions\when('wp_is_json_request')->justReturn(false);
+        Functions\when('wp_is_block_theme')->justReturn(true);
+        Functions\when('get_stylesheet')->justReturn('twentytwentyfour');
+        Functions\when('did_action')->justReturn(0);
+        Functions\when('get_option')->justReturn('40000');
+        Functions\when('site_url')->returnArg();
+
+        // Pre-register wp_head priority 1 hooks matching WordPress default-filters.php.
+        add_action('wp_head', 'wp_enqueue_scripts', 1);
+        add_action('wp_head', 'wp_maybe_inline_styles', 1);
+
+        $tmpSmallCss = tempnam(sys_get_temp_dir(), 'hlhg_small_');
+        file_put_contents($tmpSmallCss, '.wp-block-paragraph{margin:0;}');
+
+        try {
+            global $wp_styles, $wp_scripts;
+            $wp_styles = new WP_Styles();
+            $wp_scripts = new WP_Scripts();
+
+            $wp_styles->queue = ['small-block-style', 'external-theme-style'];
+            $wp_styles->registered = [
+                'small-block-style' => (object) ['src' => 'https://example.com/paragraph.css', 'ver' => null],
+                'external-theme-style' => (object) ['src' => 'https://example.com/theme.css', 'ver' => null],
+            ];
+            $wp_styles->add_data('small-block-style', 'path', $tmpSmallCss);
+
+            $instance = new TestableEarlyHints();
+            $instance->mockHeadersSent = false;
+
+            $wpHeadOrder = [];
+            Actions\expectRemoved('wp_head')
+                ->twice()
+                ->whenHappen(static function ($callback, $priority) use (&$wpHeadOrder): void {
+                    $wpHeadOrder[] = 'remove:' . (is_string($callback) ? $callback : 'callable') . ':' . $priority;
+                });
+            Actions\expectAdded('wp_head')
+                ->twice()
+                ->whenHappen(static function ($callback, $priority) use (&$wpHeadOrder): void {
+                    $label = is_array($callback) ? $callback[1] : (string) $callback;
+                    $wpHeadOrder[] = 'add:' . $label . ':' . $priority;
+                });
+
+            $instance->inspect_and_emit_link_headers();
+
+            $this->assertSame(
+                [
+                    'remove:wp_enqueue_scripts:1',
+                    'add:enqueue_post_render_block_styles:1',
+                    'remove:wp_maybe_inline_styles:1',
+                    'add:wp_maybe_inline_styles:1',
+                ],
+                $wpHeadOrder,
+            );
+            $this->assertNotNull($instance->emittedHeader);
+            $this->assertStringNotContainsString('paragraph.css', $instance->emittedHeader);
+            $this->assertStringContainsString('theme.css', $instance->emittedHeader);
+        } finally {
+            @unlink($tmpSmallCss);
+        }
     }
 
     public function test_inspect_and_emit_link_headers_formats_crossorigin_attribute_variants(): void

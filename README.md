@@ -91,6 +91,10 @@ WordPress requires canonical home and site URLs. In this repository, URL resolut
   * `GOOGLESITEKIT_ENCRYPTION_KEY` & `GOOGLESITEKIT_ENCRYPTION_SALT` (*Optional*): Site Kit encrypts stored OAuth refresh tokens in the database using AES-256-CTR. By default, Site Kit automatically falls back to standard WordPress `LOGGED_IN_KEY` and `LOGGED_IN_SALT`. Setting dedicated `GOOGLESITEKIT_ENCRYPTION_*` keys in `.env` is optional, but if specified, **must remain identical across all services sharing the database** (e.g. Reader and Editor services) so tokens can be decrypted consistently across pods.
   * *Sign in with Google (Login Helper)*: If enabling Site Kit's "Sign in with Google" module for frontend users or subscribers on the Reader service, configure a separate OAuth 2.0 Web Client ID in Google Cloud Console with the Reader origin, distinct from administrative reporting credentials.
 
+### Media Offload (`WP_STATELESS_*`)
+* **Automatic Constant Mapping**: Any valid uppercase `WP_STATELESS_*` environment variable present in `$_ENV` (e.g. `WP_STATELESS_MEDIA_MODE`, `WP_STATELESS_MEDIA_BUCKET`, `WP_STATELESS_MEDIA_ROOT_DIR`, `WP_STATELESS_SKIP_ACL_SET`) is automatically mapped to a corresponding WordPress constant in `config/application.php` (skipping empty-string and `null` values while preserving boolean `false` and integer `0`).
+* **Service Account Credential Scrubbing**: `WP_STATELESS_MEDIA_JSON_KEY` is defined as a constant for `wp-stateless` initialization and immediately scrubbed from `$_ENV` and `$_SERVER` after `Config::apply()` so raw Google Cloud service account keys are never exposed in runtime superglobals.
+
 ### Observability (OpenTelemetry)
 * `OTEL_SERVICE_NAME`: Service identifier (e.g. `wordpress-reader` or `wordpress-editor`).
 * `OTEL_EXPORTER_OTLP_PROTOCOL`: `grpc` (default).
