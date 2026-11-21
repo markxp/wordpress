@@ -35,9 +35,7 @@ services:
       WP_ENVIRONMENT_TYPE: local
       PM: static
       PM_MAX_CHILDREN: "3"
-      PM_STATUS_LISTEN: "9001"
-      HEALTH_PORT: "8082"
-      FCGI_CONNECT: "127.0.0.1:9001"
+      PM_STATUS_LISTEN: "127.0.0.1:9001"
       OTEL_SDK_DISABLED: "true"
       OTEL_PHP_AUTOLOAD_ENABLED: "false"
       OTEL_PHP_DISABLED_INSTRUMENTATIONS: "all"
@@ -45,7 +43,7 @@ services:
       OTEL_METRICS_EXPORTER: "none"
       OTEL_LOGS_EXPORTER: "none"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/healthz"]
+      test: ["CMD", "php-fpm-ping"]
       interval: 5s
       timeout: 3s
       retries: 15
