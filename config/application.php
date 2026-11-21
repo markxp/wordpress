@@ -117,12 +117,14 @@ if (!env('WP_ENVIRONMENT_TYPE') && in_array(WP_ENV, ['production', 'staging', 'd
     Config::define('WP_ENVIRONMENT_TYPE', WP_ENV);
 }
 
-if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+if (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && is_string($_SERVER['HTTP_X_FORWARDED_HOST']) && $_SERVER['HTTP_X_FORWARDED_HOST'] !== '') {
     $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+} else {
+    unset($_SERVER['HTTP_X_FORWARDED_HOST']);
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', (string) $_SERVER['HTTP_HOST']) === 1) {
-    $http_host = (string) $_SERVER['HTTP_HOST'];
+if (isset($_SERVER['HTTP_HOST']) && is_string($_SERVER['HTTP_HOST']) && preg_match('/^(?:\[[a-f0-9:]+\]|[a-z0-9.-]+)(?::\d+)?\z/i', $_SERVER['HTTP_HOST']) === 1) {
+    $http_host = $_SERVER['HTTP_HOST'];
     $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
     $dynamic_home = "{$protocol}://{$http_host}";
     Config::define('WP_HOME', $dynamic_home);
