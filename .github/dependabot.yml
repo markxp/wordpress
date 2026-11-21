@@ -5,8 +5,12 @@ updates:
     directory: "/"
     target-branch: "release-candidate"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "daily"
+    open-pull-requests-limit: 1
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     commit-message:
       prefix: "chore(deps)"
 
@@ -15,8 +19,12 @@ updates:
     directory: "/custom-plugins/iap-auth-shield"
     target-branch: "release-candidate"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    open-pull-requests-limit: 1
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     commit-message:
       prefix: "chore(deps)"
 
@@ -25,7 +33,11 @@ updates:
     directory: "/deployment"
     target-branch: "release-candidate"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "daily"
+    open-pull-requests-limit: 1
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     commit-message:
       prefix: "chore(docker)"
