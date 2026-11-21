@@ -13,7 +13,7 @@ All changes follow a strict two-stage linear promotion pipeline: **`feature/*` â
   * Branch off `release-candidate` (or rebase onto `origin/release-candidate` before opening/updating a PR: `git fetch origin && git rebase origin/release-candidate`).
   * Open pull requests targeting `release-candidate`. Land changes via **rebase-merge** or **squash-merge** to preserve linear commit history (avoid merge commits on feature branches).
 * **Stage 2 â€” `release-candidate` to `main` (Fast-Forward Promotion)**:
-  * All pre-production workflows (`Lint & Unit Tests` in `.github/workflows/lint-and-unit.yml` and `E2E SAPI Stack` in `.github/workflows/sapi-stack.yml`) must pass on `release-candidate` before promotion.
+  * The pre-production CI pipeline (`CI` / `CI Gate` in `.github/workflows/ci.yml`) must pass on `release-candidate` before promotion.
   * Promote `release-candidate` into `main` strictly via **fast-forward** (`--ff-only` / GitHub Rebase and merge) so `main` never diverges from tested `release-candidate` commits.
 * **Automated Pull Requests**: Scheduled/bot workflows (e.g., `.github/workflows/update-site-kit-dev-settings.yml`) must target `base: release-candidate`.
 
@@ -22,4 +22,4 @@ All changes follow a strict two-stage linear promotion pipeline: **`feature/*` â
 ## 2. Pre-Production Database & Test Fixtures
 
 * **On-the-Fly Fixture Generation Only**: Never commit `.sqlite`, `.sqlite3`, `.db`, or generated `.sql` database artifacts to version control.
-* **Mock WordPress Schema & Seed Data**: Maintain preset schema, `wp_user_roles`, and `active_plugins` definitions in `tests/fixtures/create-mock-db.py`. Full-stack SAPI tests (`composer test:sapi:stack` / `bin/test-root-sapi.sh`) generate the MySQL 8.4 fixture dynamically into a temporary directory and load it into an ephemeral `tmpfs` MySQL 8.4 container without modifying WordPress core or adding database drop-in plugins.
+* **Mock WordPress Schema & Seed Data**: Maintain preset schema, `wp_user_roles`, and `active_plugins` definitions in `tests/fixtures/create-mock-db.py`. Pre-production Bedrock SAPI tests (`composer test:sapi:host` / `bin/test-host-sapi.sh` in CI, and optional manual container smoke tests via `composer test:sapi:stack` / `bin/test-root-sapi.sh`) generate the MySQL 8.4 fixture dynamically into a temporary directory and load it into an ephemeral MySQL 8.4 instance without modifying WordPress core or adding database drop-in plugins.

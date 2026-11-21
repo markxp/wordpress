@@ -103,7 +103,7 @@ jobs:
                 ;;
               .vscode/* | .agents/* | deployment/*)
                 ;;
-              .github/dependabot.yml | .github/workflows/lint-and-unit.yml | .github/workflows/sapi-stack.yml | .github/workflows/plugin-sapi.yml | .github/workflows/update-site-kit-dev-settings.yml)
+              .github/dependabot.yml | .github/workflows/sapi-stack.yml | .github/workflows/update-site-kit-dev-settings.yml)
                 ;;
               bin/test-root-sapi.sh | bin/update-site-kit-dev-settings.sh)
                 ;;
