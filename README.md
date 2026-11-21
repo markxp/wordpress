@@ -44,15 +44,17 @@ Purpose-built plugins developed in this codebase as layered Composer packages un
 Configurations are defined in `config/application.php` and loaded using [`phpdotenv`](https://github.com/phpdotenv/phpdotenv) (`vlucas/phpdotenv`) and `oscarotero/env`.
 
 > [!IMPORTANT]
-> **OS Environment Variables vs. `.env` Files in Bedrock**:
-> In `config/application.php`, `Env\Env::$options = 31` enables `USE_ENV_ARRAY`, instructing `env()` to read exclusively from PHP's `$_ENV` superglobal (ignoring `getenv()` and `$_SERVER`). Because production PHP (`php.ini`) defaults to `variables_order = "GPCS"` (omitting `E`), ordinary OS process environment variables (e.g. `export VAR=val`) do **not** populate `$_ENV` and will **not** work for Bedrock settings unless `variables_order` includes `E`. Always supply Bedrock configuration via `.env` / `.env.local` files (which `Dotenv::createImmutable` loads directly into `$_ENV`) or explicitly enable `E` in `variables_order`.
+> **Environment Variable Loading & Security**:
+> Settings can be supplied via `.env` / `.env.local` files or container environment variables, with container variables taking precedence over `.env` files. Because PHP-FPM defaults to `clear_env = yes`, container variables must be forwarded in the FPM pool configuration (`clear_env = no` or `env[KEY] = $KEY`) to reach PHP, and all managed secrets and settings are scrubbed from `$_ENV` and `$_SERVER` after WordPress constants are applied.
+>
+> See [`docs/environment-variables.md`](docs/environment-variables.md) for precedence rules, `variables_order = "GPCS"` internals, managed key groups, and runtime scrubbing details.
 
 ### Site URL Configuration (`WP_HOME`, `WP_SITEURL`)
 
 WordPress requires canonical home and site URLs. In this repository, URL resolution uses the following precedence:
 
 1. **Primary: Dynamic Request Host (HTTP Web Requests)**:
-   For incoming HTTP requests, `config/application.php` dynamically resolves `WP_HOME` and `WP_SITEURL` directly from web server headers (`HTTP_HOST` / `HTTP_X_FORWARDED_HOST` and `HTTP_X_FORWARDED_PROTO`):
+   For incoming HTTP requests, `config/application.php` validates `HTTP_X_FORWARDED_HOST` / `HTTP_HOST` against `/^[a-z0-9.-]+(?::\d+)?$/i` and dynamically resolves `WP_HOME` and `WP_SITEURL` from the validated host and `HTTP_X_FORWARDED_PROTO` (unsetting malformed host headers and falling back to `WP_HOME` if validation fails):
    ```php
    $protocol = (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
    $dynamic_home = "{$protocol}://{$http_host}";
@@ -92,8 +94,8 @@ WordPress requires canonical home and site URLs. In this repository, URL resolut
   * *Sign in with Google (Login Helper)*: If enabling Site Kit's "Sign in with Google" module for frontend users or subscribers on the Reader service, configure a separate OAuth 2.0 Web Client ID in Google Cloud Console with the Reader origin, distinct from administrative reporting credentials.
 
 ### Media Offload (`WP_STATELESS_*`)
-* **Automatic Constant Mapping**: Any valid uppercase `WP_STATELESS_*` environment variable present in `$_ENV` (e.g. `WP_STATELESS_MEDIA_MODE`, `WP_STATELESS_MEDIA_BUCKET`, `WP_STATELESS_MEDIA_ROOT_DIR`, `WP_STATELESS_SKIP_ACL_SET`) is automatically mapped to a corresponding WordPress constant in `config/application.php` (skipping empty-string and `null` values while preserving boolean `false` and integer `0`).
-* **Service Account Credential Scrubbing**: `WP_STATELESS_MEDIA_JSON_KEY` is defined as a constant for `wp-stateless` initialization and immediately scrubbed from `$_ENV` and `$_SERVER` after `Config::apply()` so raw Google Cloud service account keys are never exposed in runtime superglobals.
+* **Automatic Constant Mapping**: Any valid uppercase `WP_STATELESS_*` variable (`/^WP_STATELESS_[A-Z0-9_]+$/`) present in `$_ENV` or `$_SERVER` (e.g. `WP_STATELESS_MEDIA_MODE`, `WP_STATELESS_MEDIA_BUCKET`, `WP_STATELESS_MEDIA_ROOT_DIR`, `WP_STATELESS_SKIP_ACL_SET`) is automatically mapped to a corresponding WordPress constant in `config/application.php` (skipping empty-string and `null` values while preserving boolean `false` and integer `0`).
+* **Service Account Credential Scrubbing**: All `WP_STATELESS_*` variables (including `WP_STATELESS_MEDIA_JSON_KEY`) are defined as constants for `wp-stateless` initialization and immediately scrubbed from `$_ENV` and `$_SERVER` after `Config::apply()` so raw Google Cloud service account keys and media settings are never exposed in runtime superglobals.
 
 ### Observability (OpenTelemetry)
 * `OTEL_SERVICE_NAME`: Service identifier (e.g. `wordpress-reader` or `wordpress-editor`).
