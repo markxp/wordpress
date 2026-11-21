@@ -1,0 +1,396 @@
+name: CI
+
+on:
+  push:
+    branches: ['main', 'release-candidate']
+  pull_request:
+    branches: ['release-candidate', 'main']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-candidate' }}
+
+env:
+  OTEL_PHP_DISABLED_INSTRUMENTATIONS: all
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      plugin_sapi: ${{ steps.filter.outputs.plugin_sapi }}
+      wordpress_sapi: ${{ steps.filter.outputs.wordpress_sapi }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Classify changed paths
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          emit_all_true() {
+            {
+              echo "code=true"
+              echo "plugin_sapi=true"
+              echo "wordpress_sapi=true"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          if [[ "$EVENT_NAME" != "pull_request" && "$EVENT_NAME" != "push" ]]; then
+            echo "Event '${EVENT_NAME}' triggers full CI pipeline."
+            emit_all_true
+          fi
+
+          CHANGED_FILES=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if git rev-parse --verify -q HEAD^2 >/dev/null 2>&1; then
+              CHANGED_FILES="$(git diff --name-only HEAD^1 HEAD)"
+            elif [[ -n "$PR_BASE_SHA" ]]; then
+              git fetch --no-tags --depth=1 origin "$PR_BASE_SHA" >/dev/null 2>&1 || true
+              if git cat-file -e "${PR_BASE_SHA}^{commit}" 2>/dev/null; then
+                CHANGED_FILES="$(git diff --name-only "$PR_BASE_SHA" HEAD)"
+              else
+                echo "Unable to resolve PR base commit ${PR_BASE_SHA}; running full CI pipeline."
+                emit_all_true
+              fi
+            fi
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              echo "New branch or missing previous SHA; running full CI pipeline."
+              emit_all_true
+            fi
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA" >/dev/null 2>&1 || true
+            fi
+            if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              CHANGED_FILES="$(git diff --name-only "$BEFORE_SHA" HEAD)"
+            else
+              echo "Previous commit ${BEFORE_SHA} unavailable; running full CI pipeline."
+              emit_all_true
+            fi
+          fi
+
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "Empty diff detected; running full CI pipeline as safeguard."
+            emit_all_true
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES" | sed 's/^/  - /'
+
+          CODE="false"
+          PLUGIN_SAPI="false"
+          WORDPRESS_SAPI="false"
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              *.md | LICENSE | */LICENSE | .gitignore | */.gitignore | .dockerignore | .env.example | wp-cli.yml)
+                ;;
+              .vscode/* | .agents/* | deployment/*)
+                ;;
+              .github/dependabot.yml | .github/workflows/lint-and-unit.yml | .github/workflows/sapi-stack.yml | .github/workflows/plugin-sapi.yml | .github/workflows/update-site-kit-dev-settings.yml)
+                ;;
+              bin/test-root-sapi.sh | bin/update-site-kit-dev-settings.sh)
+                ;;
+              custom-plugins/*/readme.txt | custom-themes/*/readme.txt | custom-plugins/*/bin/build-dist.sh | custom-themes/*/bin/build-dist.sh)
+                ;;
+              .github/workflows/ci.yml | composer.json | composer.lock)
+                CODE="true"
+                PLUGIN_SAPI="true"
+                WORDPRESS_SAPI="true"
+                ;;
+              pint.json | phpunit.xml.dist | tests/Config/* | tests/bootstrap.php | tests/TestCase.php)
+                CODE="true"
+                ;;
+              bin/test-host-sapi.sh | phpunit.sapi.xml.dist | tests/fixtures/*)
+                WORDPRESS_SAPI="true"
+                ;;
+              tests/Sapi/*)
+                CODE="true"
+                WORDPRESS_SAPI="true"
+                ;;
+              custom-plugins/*/tests/* | custom-plugins/*/tests-sapi/* | custom-plugins/*/phpunit*.xml.dist | custom-plugins/*/bin/test-sapi.sh | custom-themes/*/tests/* | custom-themes/*/tests-sapi/* | custom-themes/*/phpunit*.xml.dist | custom-themes/*/bin/test-sapi.sh)
+                CODE="true"
+                PLUGIN_SAPI="true"
+                ;;
+              custom-plugins/* | custom-themes/*)
+                CODE="true"
+                PLUGIN_SAPI="true"
+                WORDPRESS_SAPI="true"
+                ;;
+              config/* | web/*)
+                CODE="true"
+                WORDPRESS_SAPI="true"
+                ;;
+              *)
+                CODE="true"
+                PLUGIN_SAPI="true"
+                WORDPRESS_SAPI="true"
+                ;;
+            esac
+          done <<< "$CHANGED_FILES"
+
+          echo "Classified impact: code=${CODE}, plugin_sapi=${PLUGIN_SAPI}, wordpress_sapi=${WORDPRESS_SAPI}"
+          {
+            echo "code=${CODE}"
+            echo "plugin_sapi=${PLUGIN_SAPI}"
+            echo "wordpress_sapi=${WORDPRESS_SAPI}"
+          } >> "$GITHUB_OUTPUT"
+
+  code-style:
+    name: Code Style & Manifests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php8.5-
+            composer-${{ runner.os }}-
+
+      - name: Validate Composer manifests
+        shell: bash
+        run: |
+          shopt -s nullglob
+          composer validate --strict
+          for dir in custom-plugins/*/ custom-themes/*/; do
+            if [[ -f "${dir}composer.json" ]]; then
+              composer validate --strict --working-dir="$dir"
+            fi
+          done
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Check code style (Pint)
+        run: composer lint
+
+  unit-tests:
+    name: Unit Tests (PHP ${{ matrix.php }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php${{ matrix.php }}-
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=php --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Run overall unit tests (PHPUnit)
+        run: composer test
+
+      - name: Run per-package unit test suites (PHPUnit)
+        run: composer test:plugins
+
+  plugin-sapi:
+    name: Plugin SAPI (nginx + php-fpm)
+    needs: changes
+    if: needs.changes.outputs.plugin_sapi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php8.5-
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Install Nginx and PHP-FPM for SAPI tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx-light
+          if ! command -v php-fpm >/dev/null 2>&1 && ! command -v php-fpm8.5 >/dev/null 2>&1 && [[ ! -x /usr/sbin/php-fpm8.5 ]]; then
+            sudo apt-get install -y -qq php8.5-fpm
+          fi
+
+      - name: Run per-package SAPI tests (nginx + php-fpm)
+        run: composer test:plugins:sapi
+
+  wordpress-sapi:
+    name: Bedrock WordPress SAPI (MySQL 8.4)
+    needs: changes
+    if: needs.changes.outputs.wordpress_sapi == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mirror.gcr.io/library/mysql:8.4
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress_test_password
+          MYSQL_ROOT_PASSWORD: root_test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -P 3306 --protocol=TCP -u wordpress -pwordpress_test_password"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mysqli, pdo_mysql
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php8.5-
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Install Nginx, MySQL client, and PHP-FPM for host SAPI tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx-light mysql-client
+          if ! command -v php-fpm >/dev/null 2>&1 && ! command -v php-fpm8.5 >/dev/null 2>&1 && [[ ! -x /usr/sbin/php-fpm8.5 ]]; then
+            sudo apt-get install -y -qq php8.5-fpm
+          fi
+
+      - name: Run host-native Bedrock WordPress SAPI tests
+        run: |
+          chmod +x bin/test-host-sapi.sh
+          composer test:sapi:host
+
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs:
+      - changes
+      - code-style
+      - unit-tests
+      - plugin-sapi
+      - wordpress-sapi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CI job results
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_STYLE_RESULT: ${{ needs.code-style.result }}
+          UNIT_TESTS_RESULT: ${{ needs.unit-tests.result }}
+          PLUGIN_SAPI_RESULT: ${{ needs.plugin-sapi.result }}
+          WORDPRESS_SAPI_RESULT: ${{ needs.wordpress-sapi.result }}
+        run: |
+          set -euo pipefail
+
+          echo "CI job results:"
+          echo "  - changes:        ${CHANGES_RESULT}"
+          echo "  - code-style:     ${CODE_STYLE_RESULT}"
+          echo "  - unit-tests:     ${UNIT_TESTS_RESULT}"
+          echo "  - plugin-sapi:    ${PLUGIN_SAPI_RESULT}"
+          echo "  - wordpress-sapi: ${WORDPRESS_SAPI_RESULT}"
+
+          FAILED=0
+
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::Detect Changes job did not succeed (result: ${CHANGES_RESULT})."
+            FAILED=1
+          fi
+
+          for pair in \
+            "code-style:${CODE_STYLE_RESULT}" \
+            "unit-tests:${UNIT_TESTS_RESULT}" \
+            "plugin-sapi:${PLUGIN_SAPI_RESULT}" \
+            "wordpress-sapi:${WORDPRESS_SAPI_RESULT}"; do
+            job="${pair%%:*}"
+            res="${pair#*:}"
+            if [[ "$res" != "success" && "$res" != "skipped" ]]; then
+              echo "::error::Job '${job}' did not pass (result: ${res})."
+              FAILED=1
+            fi
+          done
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            exit 1
+          fi
+
+          echo "All required CI checks passed."
