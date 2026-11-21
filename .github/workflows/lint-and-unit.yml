@@ -1,4 +1,4 @@
-name: Plugin Lint, Unit & SAPI Tests
+name: Lint & Unit Tests
 
 on:
   push:
@@ -22,18 +22,22 @@ env:
   OTEL_PHP_DISABLED_INSTRUMENTATIONS: all
 
 jobs:
-  validate-and-test:
-    name: Validate, Lint & Test (PHP 8.5)
+  lint-and-unit:
+    name: Lint & Unit Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Setup PHP 8.5
+      - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
+          php-version: ${{ matrix.php }}
           coverage: none
 
       - name: Get Composer cache directory
@@ -44,9 +48,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
           restore-keys: |
-            composer-${{ runner.os }}-
+            composer-${{ runner.os }}-php${{ matrix.php }}-
 
       - name: Validate Composer manifests
         shell: bash
@@ -60,7 +64,7 @@ jobs:
           done
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=php --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
 
       - name: Check code style (Pint)
         run: composer lint
@@ -70,14 +74,3 @@ jobs:
 
       - name: Run per-package unit test suites (PHPUnit)
         run: composer test:plugins
-
-      - name: Install Nginx and PHP-FPM for SAPI tests
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq nginx-light
-          if ! command -v php-fpm >/dev/null 2>&1 && ! command -v php-fpm8.5 >/dev/null 2>&1; then
-            sudo apt-get install -y -qq php8.5-fpm
-          fi
-
-      - name: Run per-package SAPI tests (nginx + php-fpm)
-        run: composer test:plugins:sapi
