@@ -1,0 +1,48 @@
+name: Plugin SAPI Tests (Manual)
+
+on:
+  workflow_dispatch:
+
+env:
+  OTEL_PHP_DISABLED_INSTRUMENTATIONS: all
+
+jobs:
+  plugin-sapi:
+    name: Plugin SAPI Tests (nginx-light + php8.5-fpm)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Install Nginx and PHP-FPM for SAPI tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx-light
+          if ! command -v php-fpm >/dev/null 2>&1 && ! command -v php-fpm8.5 >/dev/null 2>&1; then
+            sudo apt-get install -y -qq php8.5-fpm
+          fi
+
+      - name: Run per-package SAPI tests (nginx + php-fpm)
+        run: composer test:plugins:sapi

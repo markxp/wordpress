@@ -1,4 +1,4 @@
-name: SAPI Stack Integration (Root)
+name: E2E SAPI Stack
 
 on:
   push:
