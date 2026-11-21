@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: release-candidate
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -35,6 +37,7 @@ jobs:
       - name: Create Pull Request if updated
         uses: peter-evans/create-pull-request@v7
         with:
+          base: release-candidate
           commit-message: "chore(plugins): update google-site-kit-dev-settings to ${{ steps.update.outputs.version }}"
           title: "chore(plugins): update google-site-kit-dev-settings to ${{ steps.update.outputs.version }}"
           body: |
