@@ -19,7 +19,21 @@ All changes follow a strict two-stage linear promotion pipeline: **`feature/*` �
 
 ---
 
-## 2. Pre-Production Database & Test Fixtures
+## 2. Repository Scope Boundaries (`/deployment` vs `/.github` vs Core Source)
+
+* **Core Application Scope (`config/`, `web/`, `custom-plugins/`, `custom-themes/`, `composer.json`)**:
+  * This is the sole production deliverable of the repository (Bedrock configuration, WordPress core/third-party package wiring, custom plugins, and themes). Automated tests and strict engineering gates apply here.
+* **`/deployment` — Reference Example & Integration Guideline Only**:
+  * `/deployment` is **NOT** tied to any real production deployment infrastructure or architecture.
+  * Treat it strictly as a user-facing reference example demonstrating how to run this repository with OpenTelemetry observability, media offloading (`wp-stateless`), web-server endpoint hardening, external `WP_CRON` triggering, file permissions, and health-probe patterns.
+  * Do **not** couple CI pipelines to building or E2E-testing `/deployment` containers on automated pushes or pull requests, and never treat `/deployment` manifests as live production infrastructure state.
+* **`/.github` — Lightweight Code-Verification Harness Only**:
+  * `/.github/workflows` exists solely to examine and verify our repository's core PHP/Bedrock/plugin source code quickly and cheaply on GitHub Actions runners (`CI` / `CI Gate` in `.github/workflows/ci.yml`).
+  * Any auxiliary scripts, service containers, or Dockerfiles referenced by workflows are disposable test harnesses—not application deliverables—and do not need cross-distro matrix verification or heavy infrastructure testing when non-source files (`README.md`, `deployment/**`, `.agents/**`) change.
+
+---
+
+## 3. Pre-Production Database & Test Fixtures
 
 * **On-the-Fly Fixture Generation Only**: Never commit `.sqlite`, `.sqlite3`, `.db`, or generated `.sql` database artifacts to version control.
 * **Mock WordPress Schema & Seed Data**: Maintain preset schema, `wp_user_roles`, and `active_plugins` definitions in `tests/fixtures/create-mock-db.py`. Pre-production Bedrock SAPI tests (`composer test:sapi:host` / `bin/test-host-sapi.sh` in CI, and optional manual container smoke tests via `composer test:sapi:stack` / `bin/test-root-sapi.sh`) generate the MySQL 8.4 fixture dynamically into a temporary directory and load it into an ephemeral MySQL 8.4 instance without modifying WordPress core or adding database drop-in plugins.
