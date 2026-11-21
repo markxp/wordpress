@@ -124,6 +124,7 @@ fi
 
 "$CONTAINER_CLI" run --rm --network host \
     -e "SAPI_STACK_BASE_URL=${SITE_URL}" \
+    -e "OTEL_PHP_DISABLED_INSTRUMENTATIONS=all" \
     -v "${REPO_ROOT}:/workspace:z" \
     -w /workspace \
     mirror.gcr.io/library/php:8.5.12-cli \
