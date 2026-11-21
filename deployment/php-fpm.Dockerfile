@@ -1,18 +1,16 @@
 # syntax=docker/dockerfile:1
 
-# require a health-server binary for COPY command.
-FROM alpine:latest as downloader
+# Download health-server sources and php-fpm-healthcheck script.
+FROM mirror.gcr.io/library/alpine:latest AS downloader
 RUN apk add --no-cache git curl
 WORKDIR /src
 RUN git clone --depth=1 --branch main https://github.com/legispect/php-fpm-healthz . && \
-    curl -o /php-fpm-healthcheck https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck && \
-    curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /install-php-extensions && \
-    chmod +x /install-php-extensions
+    curl -fsSL -o /php-fpm-healthcheck https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck
 
-FROM scratch as go-src-cache
+FROM scratch AS go-src-cache
 COPY --from=downloader /src /src
 
-FROM golang:latest as go-build
+FROM mirror.gcr.io/library/golang:latest AS go-build
 WORKDIR /usr/src/app
 
 COPY --from=go-src-cache /src/go.* ./
@@ -22,134 +20,150 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY --from=go-src-cache /src/*.go ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /health-server .
+    CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o /health-server .
 
-# This Dockerfile is based on Wordpress:fpm
-# Changes are applied for system packages, php extenstions, php configurations, and bedrock-flavored WordPress.
-# Since bedrock uses `.env` file to read configurations, we do not reserve WordPress's docker image environment variables. 
-# and not use their(the *official* WordPress docker image's) docker-entrypoint.
-# We use php:fpm's entrypoint, docker-php-entrypoint.
+# Primary PHP-FPM runtime: Debian Trixie Slim + precompiled packages.sury.org PHP 8.5 APT packages.
+# Eliminates all C/C++ PECL compilation (`install-php-extensions`) and legacy CLI `update-alternatives` manpage warnings.
+FROM mirror.gcr.io/library/debian:trixie-slim AS php-fpm
 
-FROM scratch as install-php-extension-cache
-COPY --from=downloader /install-php-extensions /
+# Retain downloaded .deb archives inside BuildKit cache mounts without bloating image layers.
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
-FROM mirror.gcr.io/library/php:8.5.12-fpm as php-fpm
-# Copy mlocati's installer from downloader stage
-COPY --from=install-php-extension-cache --chmod=754 /install-php-extensions /usr/local/bin/
-
-# opt out the Ubuntu/Debian official docker images that automatically clean APT cache.
-# because we use `--mount=type=cache` between installation steps, and it enables caches between
-# image layers without increasing the final image size.
-#
-# ( another benifit is that we don'y need to clean up apt cache at the end of installations.
-# ie. rm -rf /var/lib/apt )
-RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
-
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
+# Install precompiled PHP 8.5 FPM, core WordPress extensions, Imagick, OpenTelemetry/gRPC/Protobuf, APCu, and runtime tools.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eu; \
+    export DEBIAN_FRONTEND=noninteractive; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl; \
+    curl -fsSL https://packages.sury.org/debsuryorg-archive-keyring.deb -o /tmp/sury.deb; \
+    dpkg -i /tmp/sury.deb; \
+    rm -f /tmp/sury.deb; \
+    echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ trixie main" > /etc/apt/sources.list.d/php.list; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-    libfcgi-bin \
-    # Ghostscript is required for rendering PDF previews
-    ghostscript \
-    imagemagick \
-    ; \
-    # Enable ImageMagick PDF read/write (https://stackoverflow.com/a/52862052)
-    sed -i 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' /etc/ImageMagick-7/policy.xml
+        php8.5-fpm \
+        php8.5-cli \
+        php8.5-common \
+        php8.5-bcmath \
+        php8.5-curl \
+        php8.5-gd \
+        php8.5-intl \
+        php8.5-mbstring \
+        php8.5-mysql \
+        php8.5-xml \
+        php8.5-zip \
+        php8.5-imagick \
+        php8.5-igbinary \
+        php8.5-protobuf \
+        php8.5-opentelemetry \
+        php8.5-grpc \
+        php8.5-apcu \
+        libfcgi-bin \
+        ghostscript \
+        zip \
+        unzip \
+        tzdata; \
+    # Symlink php-fpm8.5 -> /usr/local/sbin/php-fpm so `php-fpm` works identically across base images
+    ln -sf /usr/sbin/php-fpm8.5 /usr/local/sbin/php-fpm; \
+    mkdir -p /run/php /var/www/html; \
+    chown www-data:www-data /run/php; \
+    chown root:root /var/www/html && chmod 755 /var/www/html; \
+    # Enable ImageMagick PDF read/write across ImageMagick 6/7 policy layouts
+    for f in /etc/ImageMagick-*/policy.xml; do \
+        if [ -f "$f" ]; then \
+            sed -i \
+                -e 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' \
+                -e 's/pattern="{GIF,JPEG,PNG,WEBP}"/pattern="{GIF,JPEG,PNG,WEBP,PDF}"/g' \
+                "$f"; \
+        fi; \
+    done
 
-# Set php.ini
-# WARNING: DO NOT use 'pear config-set php_ini' here. 
-# install-php-extensions handles its own config files, and manual PEAR modification 
-# causes "Module already loaded" errors for extensions like apcu.
-RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+# Configure foreground container-native PHP-FPM global & pool defaults (matching official docker-library/php:fpm behavior),
+# recommended OPCache settings, and production error logging across both FPM and CLI SAPIs.
+RUN <<'EOT'
+set -eu
 
-# install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
-# We consolidate all extensions into a single layer for production optimization (smaller image size).
-# The installation order is carefully chosen to minimize conflicts and follow user preference.
+cat > /etc/php/8.5/fpm/php-fpm.conf <<'EOF'
+[global]
+error_log = /proc/self/fd/2
+log_limit = 8192
+daemonize = no
+include = /etc/php/8.5/fpm/pool.d/*.conf
+EOF
 
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    set -ex; \
-    echo "Installing all PHP Extensions..." && \
-    # 1. Core Extensions: Required by WordPress for basic functionality (intl, gd, mysqli, etc.)
-    # 2. Imagick: Advanced image processing
-    # 3. PECL Performance & Monitoring: timezonedb, igbinary, protobuf, opentelemetry, grpc
-    # 4. APCU: User-land caching, installed last for safety.
-    install-php-extensions \
-    bcmath exif gd intl mysqli zip \
-    imagick \
-    timezonedb igbinary protobuf opentelemetry grpc \
-    apcu
+sed -i 's|^listen = .*|listen = 9000|g' /etc/php/8.5/fpm/pool.d/www.conf
 
-# Phase 4: Runtime Tooling & Final Configuration
-# We consolidate tooling and config files into a single layer for production optimization.
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    set -ex; \
-    apt-get update && apt-get install -y --no-install-recommends zip unzip curl; \
-    # Configure recommended OPCache settings (https://secure.php.net/manual/en/opcache.installation.php)
-    { \
-    echo 'opcache.memory_consumption=256'; \
-    echo 'opcache.interned_strings_buffer=32'; \
-    echo 'opcache.max_accelerated_files=20000'; \
-    echo 'opcache.validate_timestamps=false'; \
-    echo 'opcache.jit=tracing'; \
-    echo 'opcache.jit_buffer_size=64M'; \
-    } > /usr/local/etc/php/conf.d/opcache-recommended.ini; \
-    # Set production error logging settings (https://wordpress.org/support/article/editing-wp-config-php/#configure-error-logging)
-    { \
-    echo 'error_reporting = E_ALL'; \
-    echo 'display_errors = Off'; \
-    echo 'display_startup_errors = Off'; \
-    echo 'log_errors = On'; \
-    echo 'error_log = /dev/stderr'; \
-    echo 'log_errors_max_len = 1024'; \
-    echo 'ignore_repeated_errors = On'; \
-    echo 'ignore_repeated_source = Off'; \
-    echo 'html_errors = Off'; \
-    echo 'expose_php = Off'; \
-    } > /usr/local/etc/php/conf.d/error-logging.ini
+cat > /etc/php/8.5/fpm/pool.d/zz-docker.conf <<'EOF'
+[www]
+listen = 9000
+access.log = /proc/self/fd/2
+catch_workers_output = yes
+decorate_workers_output = no
+EOF
 
-# modify PHP.ini at instance starting up. 
-ENV MEM_LIMIT=128M
-ENV POST_MAX_SIZE=8M
-ENV UPLOAD_MAX_FILE_SIZE=64M
-ENV MAX_INPUT_TIME=30
-ENV MAX_EXECUTION_TIME=30
-ENV MAX_FILE_UPLOADS=20
+for conf_dir in /etc/php/8.5/fpm/conf.d /etc/php/8.5/cli/conf.d; do
+    cat > "${conf_dir}/opcache-recommended.ini" <<'EOF'
+opcache.memory_consumption=256
+opcache.interned_strings_buffer=32
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=false
+opcache.jit=tracing
+opcache.jit_buffer_size=64M
+EOF
 
-# modify php-fpm pool settings at instance starting up
-ENV PM=static
-ENV PM_MAX_CHILDREN=15
-ENV REQUEST_TERMINATE_TIMEOUT=35s
-ENV PM_STATUS_LISTEN=9001
+    cat > "${conf_dir}/error-logging.ini" <<'EOF'
+error_reporting = E_ALL
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = /dev/stderr
+log_errors_max_len = 1024
+ignore_repeated_errors = On
+ignore_repeated_source = Off
+html_errors = Off
+expose_php = Off
+EOF
+done
+EOT
 
-# 1. Because we need to change the above `php.ini` values at instance starting up, this entrypoint reads envs,
-# 	and change `php.ini` 
-# 	Note: The read path of FPM config does not changed.
-# 2. Copy php-fpm-healthcheck script to /usr/local/bin.
-# 3. Copy the home-made health-server for wrapping health check calls.
+# Configure paths consumed by php-fpm.docker-entrypoint.sh
+ENV PHP_INI_DIR=/etc/php/8.5/fpm \
+    PHP_CONF_DIR=/etc/php/8.5/fpm/conf.d \
+    PHP_FPM_POOL_CONF=/etc/php/8.5/fpm/pool.d/www.conf
+
+# Runtime PHP & PHP-FPM tunables swapped by docker-entrypoint.sh at container startup
+ENV MEM_LIMIT=128M \
+    POST_MAX_SIZE=8M \
+    UPLOAD_MAX_FILE_SIZE=64M \
+    MAX_INPUT_TIME=30 \
+    MAX_EXECUTION_TIME=30 \
+    MAX_FILE_UPLOADS=20 \
+    PM=static \
+    PM_MAX_CHILDREN=15 \
+    REQUEST_TERMINATE_TIMEOUT=35s \
+    PM_STATUS_LISTEN=9001 \
+    HEALTH_PORT=8082 \
+    FCGI_CONNECT=127.0.0.1:9001
+
 # Note: In Podman/Docker, COPY --from source paths are absolute from the stage root.
 # See: https://github.com/containers/podman/issues/14358
 COPY --chmod=755 --from=downloader /php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
 COPY --chmod=755 --from=go-build   /health-server       /usr/local/bin/health-server
 COPY --chmod=755 deployment/php-fpm.docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-
 ENTRYPOINT ["docker-entrypoint.sh"]
-# WORKDIR /var/www/html
-# EXPOSE 9000
 CMD ["php-fpm"]
 
 
-FROM php-fpm as builder
-# Install build tools that are NOT in the runtime base
-RUN --mount=type=cache,target=/var/cache/apt\
-    --mount=type=cache,target=/var/lib/apt\
+FROM php-fpm AS builder
+# Install build-only VCS tool not needed in final runtime image
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install -y --no-install-recommends git && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends git
 
 WORKDIR /var/www/html
 
@@ -166,17 +180,24 @@ COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
     COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader
 
-# Copy the application source code
+# Copy the application source code and dereference custom-plugin path repository symlinks
 COPY . .
-RUN rm -rf custom-plugins
+RUN set -eu; \
+    for link in web/app/plugins/*; do \
+        if [ -L "$link" ]; then \
+            target="$(readlink -f "$link")"; \
+            rm "$link"; \
+            cp -a "$target" "$link"; \
+        fi; \
+    done; \
+    rm -rf custom-plugins
 
 # Final production stage
-FROM php-fpm as app
+FROM php-fpm AS app
 WORKDIR /var/www/html
 
-# Copy the built application from the builder stage
-# This ensures composer and other build-time tools are not in the final image.
-# Note: In Podman/Docker, COPY --from source paths are absolute from the stage root.
+# Copy the built application from the builder stage so Composer and git are excluded from the final image.
 COPY --from=builder /var/www/html /var/www/html
+RUN chown root:root /var/www/html && chmod 755 /var/www/html
 
 CMD ["php-fpm"]

@@ -2,7 +2,7 @@
 # Knative Service YAML – WordPress Single-Pod (4-container) for Cloud Run
 # ==============================================================================
 #
-# Multi-container sidecars on Cloud Run require ALPHA launch stage.
+# Multi-container sidecars and startup ordering on Cloud Run are GA.
 # Startup ordering: otel-collector must be healthy before nginx/wordpress start.
 #                   cloud-sql-proxy must be healthy before wordpress starts.
 #
@@ -21,7 +21,7 @@
 #          --role=roles/secretmanager.secretAccessor \
 #          --project=PROJECT_ID
 #   4. Deploy:
-#        composer knative-deploy
+#        gcloud run services replace deployment/knative.yaml --region=REGION
 #
 # Replace <REGISTRY>, <TAG>, PROJECT_ID, CLOUD_SQL_INSTANCE, SERVICE_ACCOUNT
 # with real values (or use substitution variables in Cloud Build / gcloud CLI).
@@ -33,8 +33,8 @@ kind: Service
 metadata:
   name: wordpress
   annotations:
-    # Multi-container sidecars require Alpha launch stage on Cloud Run.
-    run.googleapis.com/launch-stage: ALPHA
+    # Multi-container sidecars and container-dependencies are GA; keep BETA for Knative YAML compatibility if needed.
+    run.googleapis.com/launch-stage: BETA
 
 spec:
   template:
@@ -142,7 +142,7 @@ spec:
               value: "30"
             - name: MAX_FILE_UPLOADS
               value: "20"
-            # PHP-FPM pool
+            # PHP-FPM pool & health sidecar
             - name: PM
               value: "static"
             - name: PM_MAX_CHILDREN
@@ -151,6 +151,10 @@ spec:
               value: "35s"
             - name: PM_STATUS_LISTEN
               value: "9001"
+            - name: HEALTH_PORT
+              value: "8082"
+            - name: FCGI_CONNECT
+              value: "127.0.0.1:9001"
             # OpenTelemetry (PHP SDK standard env vars)
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://127.0.0.1:4317"
@@ -252,7 +256,7 @@ spec:
         # Config is loaded from Secret Manager volume.
         # -----------------------------------------------------------------------
         - name: otel-collector
-          image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.160.0
+          image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.164.0
 
           volumeMounts:
             - name: otel-config

@@ -73,7 +73,7 @@ services:
     volumes:
       - run-data:/var/run
       # Mount dotfiles directory so the entrypoint can find/symlink .env
-      - ./dotfiles:/var/www/html/dotfiles
+      - ./dotfiles:/var/www/html/dotfiles:ro,z
       # Cloud SQL unix socket directory (shared with cloud-sql-proxy)
       - cloudsql-sockets:/cloudsql
     environment:
@@ -84,11 +84,13 @@ services:
       MAX_INPUT_TIME: "${MAX_INPUT_TIME:-30}"
       MAX_EXECUTION_TIME: "${MAX_EXECUTION_TIME:-30}"
       MAX_FILE_UPLOADS: "${MAX_FILE_UPLOADS:-20}"
-      # PHP-FPM pool
+      # PHP-FPM pool & health sidecar
       PM: "${PM:-static}"
       PM_MAX_CHILDREN: "${PM_MAX_CHILDREN:-5}"
       REQUEST_TERMINATE_TIMEOUT: "${REQUEST_TERMINATE_TIMEOUT:-35s}"
       PM_STATUS_LISTEN: "9001"
+      HEALTH_PORT: "8082"
+      FCGI_CONNECT: "127.0.0.1:9001"
       # Development toggle
       DEV_ON: "${DEV_ON:-false}"
       # Cloud SQL socket path (set DB_HOST in .env to /cloudsql/PROJECT:REGION:INSTANCE)
@@ -149,11 +151,11 @@ services:
   # Config is file-mounted for local dev; in Cloud Run it comes from Secret Mgr.
   # ----------------------------------------------------------------------------
   otel-collector:
-    image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.144.0
+    image: us-docker.pkg.dev/cloud-ops-agents-artifacts/google-cloud-opentelemetry-collector/otelcol-google:0.164.0
     # WORKAROUND: network_mode: "service:nginx" is broken in podman-compose 1.0.3
     network_mode: "container:nginx"
     volumes:
-      - ./otel-config.yaml:/etc/otelcol-google/config.yaml:ro
+      - ./otel-config.yaml:/etc/otelcol-google/config.yaml:ro,z
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:13133/"]
       interval: 15s

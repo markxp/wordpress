@@ -1,4 +1,6 @@
-FROM mirror.gcr.io/library/php:fpm as compiler
+# syntax=docker/dockerfile:1
+
+FROM mirror.gcr.io/library/php:8.5.12-fpm AS compiler
 WORKDIR /var/www/html
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -17,7 +19,15 @@ RUN --mount=type=cache,target=/root/.composer/cache \
     COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader --ignore-platform-reqs
 # copy our app
 COPY . .
-RUN rm -rf custom-plugins
+RUN set -eu; \
+    for link in web/app/plugins/*; do \
+        if [ -L "$link" ]; then \
+            target="$(readlink -f "$link")"; \
+            rm "$link"; \
+            cp -a "$target" "$link"; \
+        fi; \
+    done; \
+    rm -rf custom-plugins
 
 # truncate all PHP files to 0 bytes for security and image size optimization
 RUN find . -type f -name "*.php" -exec truncate -s 0 {} +
