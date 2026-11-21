@@ -8,7 +8,7 @@ description: Specifies rules and preferences for our Bedrock-based WordPress pro
 - **Application Reusability**: We focus heavily on application reusability. This repository must contain all WordPress-related custom packages, plugins, and scripts necessary for the site layout and logic.
 - **Runtime Target**: The system runtime targets the last two major PHP versions, supporting both Alpine and Debian-based execution environments.
 - **Credential Security**: All sensitive configurations—including cloud credentials, WordPress keys/salts, and database connection secrets—must **never** be committed to version control. Use environment variables.
-- **Deployment Isolation**: Actual production deployment configurations must be kept completely separate from this repository. Any deployment configuration files stored here should be strictly for local development or testing environments.
+- **Deployment Isolation**: Actual production deployment configurations and infrastructure live completely outside this repository. `/deployment` is strictly a reference blueprint illustrating observability, media offloading, basic web-server security, `WP_CRON`, and health-check integration—never treat it as production infrastructure or gate code CI on building `/deployment` images.
 
 ## WordPress Core Structure
 
