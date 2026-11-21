@@ -11,6 +11,9 @@
          failOnRisky="true"
          failOnWarning="true">
     <testsuites>
+        <testsuite name="config">
+            <directory>tests/Config</directory>
+        </testsuite>
         <testsuite name="remove-wp-default-link-header">
             <directory>custom-plugins/remove-wp-default-link-header/tests</directory>
         </testsuite>

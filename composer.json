@@ -116,19 +116,22 @@
     },
     "scripts": {
         "test": [
+            "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "phpunit"
         ],
         "test:plugins": [
+            "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "bash -c 'set -e; shopt -s nullglob; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; composer --working-dir=\"$dir\" test; fi; done'"
         ],
         "test:plugin": [
+            "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test -- \"$@\"' --"
         ],
         "test:container": [
-            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit"
+            "docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit || docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/phpunit"
         ],
         "test:plugins:container": [
-            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done' || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done'"
+            "docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done' || docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli sh -c 'set -e; for dir in custom-plugins/*/ custom-themes/*/; do if [ -f \"${dir}phpunit.xml.dist\" ]; then echo \"==> Testing ${dir}\"; (cd \"$dir\" && php /workspace/vendor/bin/phpunit); fi; done'"
         ],
         "test:plugin:container": [
             "bash -c 'TARGET=\"$1\"; shift || true; if [ -d \"custom-plugins/${TARGET}\" ]; then DIR=\"custom-plugins/${TARGET}\"; elif [ -d \"custom-themes/${TARGET}\" ]; then DIR=\"custom-themes/${TARGET}\"; elif [ -d \"${TARGET}\" ]; then DIR=\"${TARGET}\"; else echo \"Unknown plugin/theme: ${TARGET}\" >&2; exit 1; fi; composer --working-dir=\"$DIR\" test:container -- \"$@\"' --"
@@ -149,16 +152,18 @@
             "bash bin/test-root-sapi.sh"
         ],
         "lint": [
+            "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "pint --test"
         ],
         "lint:container": [
-            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test"
+            "docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test || docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint --test"
         ],
         "lint:fix": [
+            "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "pint"
         ],
         "lint:fix:container": [
-            "docker run --rm -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint || docker run --rm -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint"
+            "docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace:z -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint || docker run --rm -e OTEL_PHP_DISABLED_INSTRUMENTATIONS=all -v $(pwd):/workspace -w /workspace mirror.gcr.io/library/php:8.5.12-cli php vendor/bin/pint"
         ],
         "clean": [
             "rm -rf vendor",

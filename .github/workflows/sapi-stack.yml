@@ -1,8 +1,14 @@
-name: SAPI Stack Integration (Root)
+name: E2E SAPI Stack
 
 on:
+  push:
+    branches: ['main', 'release-candidate']
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+      - 'LICENSE'
   pull_request:
-    branches: ['main']
+    branches: ['release-candidate', 'main']
     paths-ignore:
       - '**.md'
       - '.vscode/**'
@@ -10,19 +16,74 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/release-candidate' }}
+
+env:
+  OTEL_PHP_DISABLED_INSTRUMENTATIONS: all
 
 jobs:
   sapi-stack:
-    name: Full Container SAPI Stack (Nginx + PHP-FPM + MariaDB)
+    name: SAPI Stack (${{ matrix.stack.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ (github.ref == 'refs/heads/main' || github.base_ref == 'main' || github.event_name == 'workflow_dispatch') && fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"},{"name":"Google Cloud Run google-24","dockerfile":"deployment/php-fpm.google-24.Dockerfile","scope":"sapi-wp-google24"}]') || fromJSON('[{"name":"Debian Sury APT","dockerfile":"deployment/php-fpm.Dockerfile","scope":"sapi-wp-sury"}]') }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Run root container SAPI stack tests
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock', 'custom-plugins/*/composer.json', 'custom-themes/*/composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --ignore-platform-req=ext-grpc --ignore-platform-req=ext-opentelemetry
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Nginx test image (cached)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deployment/nginx.Dockerfile
+          tags: localhost/nginx-sapi-test:latest
+          load: true
+          cache-from: type=gha,scope=sapi-nginx
+          cache-to: type=gha,scope=sapi-nginx,mode=max
+
+      - name: Build PHP-FPM WordPress test image (${{ matrix.stack.name }})
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.stack.dockerfile }}
+          target: app
+          tags: localhost/wordpress-sapi-test:latest
+          load: true
+          cache-from: type=gha,scope=${{ matrix.stack.scope }}
+          cache-to: type=gha,scope=${{ matrix.stack.scope }},mode=max
+
+      - name: Run root container SAPI stack tests (${{ matrix.stack.name }})
+        env:
+          SAPI_SKIP_BUILD: '1'
+          SAPI_PHP_FPM_DOCKERFILE: ${{ matrix.stack.dockerfile }}
         run: |
           chmod +x bin/test-root-sapi.sh
           composer test:sapi:stack
