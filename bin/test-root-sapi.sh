@@ -95,14 +95,14 @@ fi
 echo "Waiting for Nginx and PHP-FPM healthchecks..."
 for i in $(seq 1 60); do
     if curl -fsS "http://127.0.0.1:${SAPI_HEALTH_PORT}/nginx_status" >/dev/null 2>&1 \
-        && "$CONTAINER_CLI" exec wp-sapi-php-fpm curl -fsS "http://127.0.0.1:8082/healthz" >/dev/null 2>&1 \
+        && "$CONTAINER_CLI" exec wp-sapi-php-fpm php-fpm-ping >/dev/null 2>&1 \
         && curl -fsS "${SITE_URL}/" >/dev/null 2>&1; then
         break
     fi
     if [[ "$i" -eq 60 ]]; then
         echo "ERROR: Nginx / PHP-FPM / WordPress failed readiness check within 60s." >&2
         curl -i -sS "http://127.0.0.1:${SAPI_HEALTH_PORT}/nginx_status" >&2 || true
-        "$CONTAINER_CLI" exec wp-sapi-php-fpm curl -i -sS "http://127.0.0.1:8082/healthz" >&2 || true
+        "$CONTAINER_CLI" exec wp-sapi-php-fpm php-fpm-ping >&2 || true
         curl -i -sS "${SITE_URL}/" >&2 || true
         "$CONTAINER_CLI" logs wp-sapi-mysql || true
         "$CONTAINER_CLI" logs wp-sapi-nginx || true
@@ -111,6 +111,36 @@ for i in $(seq 1 60); do
     fi
     sleep 1
 done
+
+echo "Verifying runtime Composer authoritative classmap, OPcache, and Imagick PDF policy..."
+"$CONTAINER_CLI" exec wp-sapi-php-fpm php -r '
+$loader = require "/var/www/html/vendor/autoload.php";
+if (!$loader->isClassMapAuthoritative()) {
+    fwrite(STDERR, "Expected Composer classmap-authoritative autoloader to be enabled.\n");
+    exit(1);
+}
+if (!extension_loaded("Zend OPcache")) {
+    fwrite(STDERR, "Expected Zend OPcache extension to be loaded.\n");
+    exit(1);
+}
+if (!extension_loaded("imagick")) {
+    fwrite(STDERR, "Expected imagick extension to be loaded.\n");
+    exit(1);
+}
+$pdf = "%PDF-1.4\n"
+    . "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+    . "2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n"
+    . "3 0 obj<</Type/Page/MediaBox[0 0 72 72]/Parent 2 0 R/Resources<<>>>>endobj\n"
+    . "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \n"
+    . "trailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF\n";
+$im = new Imagick();
+$im->readImageBlob($pdf);
+if ($im->getNumberImages() < 1) {
+    fwrite(STDERR, "Imagick failed to decode minimal 1-page PDF blob.\n");
+    exit(1);
+}
+$im->clear();
+'
 
 if [[ ! -f "${REPO_ROOT}/vendor/bin/phpunit" ]]; then
     echo "Installing dev dependencies via Composer container for PHPUnit..."
@@ -122,10 +152,14 @@ if [[ ! -f "${REPO_ROOT}/vendor/bin/phpunit" ]]; then
         composer install --no-interaction --prefer-dist --ignore-platform-reqs
 fi
 
-"$CONTAINER_CLI" run --rm --network host \
-    -e "SAPI_STACK_BASE_URL=${SITE_URL}" \
-    -e "OTEL_PHP_DISABLED_INSTRUMENTATIONS=all" \
-    -v "${REPO_ROOT}:/workspace:z" \
-    -w /workspace \
-    mirror.gcr.io/library/php:8.5.12-cli \
-    php vendor/bin/phpunit -c phpunit.sapi.xml.dist
+if command -v php >/dev/null 2>&1 && OTEL_PHP_DISABLED_INSTRUMENTATIONS=all php -r 'exit(PHP_VERSION_ID >= 80500 ? 0 : 1);'; then
+    SAPI_STACK_BASE_URL="${SITE_URL}" OTEL_PHP_DISABLED_INSTRUMENTATIONS=all php "${REPO_ROOT}/vendor/bin/phpunit" -c "${REPO_ROOT}/phpunit.sapi.xml.dist"
+else
+    "$CONTAINER_CLI" run --rm --network host \
+        -e "SAPI_STACK_BASE_URL=${SITE_URL}" \
+        -e "OTEL_PHP_DISABLED_INSTRUMENTATIONS=all" \
+        -v "${REPO_ROOT}:/workspace:z" \
+        -w /workspace \
+        mirror.gcr.io/library/php:8.5.12-cli \
+        php vendor/bin/phpunit -c phpunit.sapi.xml.dist
+fi

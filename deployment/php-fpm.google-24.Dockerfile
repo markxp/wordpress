@@ -1,27 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# Download health-server sources and php-fpm-healthcheck script.
-FROM mirror.gcr.io/library/alpine:latest AS downloader
-RUN apk add --no-cache git curl
-WORKDIR /src
-RUN git clone --depth=1 --branch main https://github.com/legispect/php-fpm-healthz . && \
-    curl -fsSL -o /php-fpm-healthcheck https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck
-
-FROM scratch AS go-src-cache
-COPY --from=downloader /src /src
-
-FROM mirror.gcr.io/library/golang:latest AS go-build
-WORKDIR /usr/src/app
-
-COPY --from=go-src-cache /src/go.* ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod download
-COPY --from=go-src-cache /src/*.go ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o /health-server .
-
 # Companion Cloud Run `google-24-full` PHP 8.5 runtime image.
 # Core WordPress extensions (`bcmath`, `exif`, `gd`, `intl`, `mysqli`, `zip`, `opcache`), `curl`, `unzip`, `gs`,
 # and dynamic `.so` modules (`imagick.so`, `protobuf.so`, `grpc.so`, `opentelemetry.so`) are prebuilt in the runtime.
@@ -34,14 +12,13 @@ USER root
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; \
     echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 
-# Install `libfcgi-bin` (`cgi-fcgi` required by `php-fpm-healthcheck`) and `zip`.
+# Install `zip` for Composer archive extraction and WordPress package handling.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eu; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        libfcgi-bin \
         zip; \
     mkdir -p /etc/php/conf.d /etc/php-fpm.d /run/php /var/www/html; \
     chown www-data:www-data /run/php; \
@@ -130,14 +107,9 @@ ENV MEM_LIMIT=128M \
     PM=static \
     PM_MAX_CHILDREN=15 \
     REQUEST_TERMINATE_TIMEOUT=35s \
-    PM_STATUS_LISTEN=9001 \
-    HEALTH_PORT=8082 \
-    FCGI_CONNECT=127.0.0.1:9001
+    PM_STATUS_LISTEN=127.0.0.1:9001
 
-# Note: In Podman/Docker, COPY --from source paths are absolute from the stage root.
-# See: https://github.com/containers/podman/issues/14358
-COPY --chmod=755 --from=downloader /php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
-COPY --chmod=755 --from=go-build   /health-server       /usr/local/bin/health-server
+COPY --chmod=755 deployment/php-fpm-ping.php /usr/local/bin/php-fpm-ping
 COPY --chmod=755 deployment/php-fpm.docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]
@@ -165,7 +137,7 @@ COPY --from=mirror.gcr.io/composer/composer:latest /usr/bin/composer /usr/bin/co
 COPY composer.json composer.lock ./
 COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
-    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --optimize-autoloader --apcu-autoloader
+    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --classmap-authoritative
 
 # Copy the application source code and dereference custom-plugin path repository symlinks
 COPY . .
