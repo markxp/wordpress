@@ -151,6 +151,9 @@
         "test:sapi:stack": [
             "bash bin/test-root-sapi.sh"
         ],
+        "test:sapi:host": [
+            "bash bin/test-host-sapi.sh"
+        ],
         "lint": [
             "@putenv OTEL_PHP_DISABLED_INSTRUMENTATIONS=all",
             "pint --test"
