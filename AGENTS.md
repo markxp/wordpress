@@ -13,7 +13,7 @@ All changes follow a strict two-stage linear promotion pipeline: **`feature/*` â
   * Branch off `release-candidate` (or rebase onto `origin/release-candidate` before opening/updating a PR: `git fetch origin && git rebase origin/release-candidate`).
   * Open pull requests targeting `release-candidate`. Land changes via **rebase-merge** or **squash-merge** to preserve linear commit history (avoid merge commits on feature branches).
 * **Stage 2 â€” `release-candidate` to `main` (Fast-Forward Promotion)**:
-  * All pre-production workflows (`Plugin Lint, Unit & SAPI Tests` in `.github/workflows/plugin-quality-and-tests.yml` and `SAPI Stack Integration (Root)` in `.github/workflows/sapi-stack.yml`) must pass on `release-candidate` before promotion.
+  * All pre-production workflows (`Lint & Unit Tests` in `.github/workflows/lint-and-unit.yml` and `E2E SAPI Stack` in `.github/workflows/sapi-stack.yml`) must pass on `release-candidate` before promotion.
   * Promote `release-candidate` into `main` strictly via **fast-forward** (`--ff-only` / GitHub Rebase and merge) so `main` never diverges from tested `release-candidate` commits.
 * **Automated Pull Requests**: Scheduled/bot workflows (e.g., `.github/workflows/update-site-kit-dev-settings.yml`) must target `base: release-candidate`.
 

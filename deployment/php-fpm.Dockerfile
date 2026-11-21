@@ -1,27 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# Download health-server sources and php-fpm-healthcheck script.
-FROM mirror.gcr.io/library/alpine:latest AS downloader
-RUN apk add --no-cache git curl
-WORKDIR /src
-RUN git clone --depth=1 --branch main https://github.com/legispect/php-fpm-healthz . && \
-    curl -fsSL -o /php-fpm-healthcheck https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck
-
-FROM scratch AS go-src-cache
-COPY --from=downloader /src /src
-
-FROM mirror.gcr.io/library/golang:latest AS go-build
-WORKDIR /usr/src/app
-
-COPY --from=go-src-cache /src/go.* ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go mod download
-COPY --from=go-src-cache /src/*.go ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o /health-server .
-
 # Primary PHP-FPM runtime: Debian Trixie Slim + precompiled packages.sury.org PHP 8.5 APT packages.
 # Eliminates all C/C++ PECL compilation (`install-php-extensions`) and legacy CLI `update-alternatives` manpage warnings.
 FROM mirror.gcr.io/library/debian:trixie-slim AS php-fpm
@@ -60,7 +38,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         php8.5-opentelemetry \
         php8.5-grpc \
         php8.5-apcu \
-        libfcgi-bin \
         ghostscript \
         zip \
         unzip \
@@ -143,14 +120,9 @@ ENV MEM_LIMIT=128M \
     PM=static \
     PM_MAX_CHILDREN=15 \
     REQUEST_TERMINATE_TIMEOUT=35s \
-    PM_STATUS_LISTEN=9001 \
-    HEALTH_PORT=8082 \
-    FCGI_CONNECT=127.0.0.1:9001
+    PM_STATUS_LISTEN=127.0.0.1:9001
 
-# Note: In Podman/Docker, COPY --from source paths are absolute from the stage root.
-# See: https://github.com/containers/podman/issues/14358
-COPY --chmod=755 --from=downloader /php-fpm-healthcheck /usr/local/bin/php-fpm-healthcheck
-COPY --chmod=755 --from=go-build   /health-server       /usr/local/bin/health-server
+COPY --chmod=755 deployment/php-fpm-ping.php /usr/local/bin/php-fpm-ping
 COPY --chmod=755 deployment/php-fpm.docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["docker-entrypoint.sh"]
@@ -178,7 +150,7 @@ COPY --from=mirror.gcr.io/composer/composer:latest /usr/bin/composer /usr/bin/co
 COPY composer.json composer.lock ./
 COPY custom-plugins ./custom-plugins
 RUN --mount=type=cache,target=/root/.composer/cache \
-    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --apcu-autoloader
+    COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev --no-interaction --classmap-authoritative
 
 # Copy the application source code and dereference custom-plugin path repository symlinks
 COPY . .

@@ -54,8 +54,10 @@ if [ -f "$POOL_CONF" ]; then
         -e "s/^;\?request_terminate_timeout = .*/request_terminate_timeout = ${REQUEST_TERMINATE_TIMEOUT:-0}/g" \
         -e "s/^;\?pm\.status_listen = .*/pm.status_listen = ${PM_STATUS_LISTEN:-127.0.0.1:9001}/g" \
         -e "s|^;\?pm\.status_path = .*|pm.status_path = /status|g" \
+        -e "s|^;\?ping\.path = .*|ping.path = /ping|g" \
+        -e "s|^;\?ping\.response = .*|ping.response = pong|g" \
         -e 's|^;\?access\.format = .*|access.format = "%{HTTP_X_REAL_IP}e %s %m %{REQUEST_URI}e duration=%{milliseconds}d mem=%{megabytes}M cpu=%C%%"|g' \
-        -e 's|^;\?access\.suppress_path\[\] = /health_check\.php|access.suppress_path[] = /status|g' \
+        -e 's|^;\?access\.suppress_path\[\] = /health_check\.php|access.suppress_path[] = /status\naccess.suppress_path[] = /ping|g' \
         -e 's|^;\?slowlog = .*|slowlog = /proc/self/fd/2|g' \
         -e 's|^;\?request_slowlog_timeout = .*|request_slowlog_timeout = 3s|g' \
         -e "s|^;\?chdir = /var/www.*|chdir = ${ROOT_DIR}/web|g" \
@@ -142,16 +144,6 @@ fi
 # Normalize flag-only invocations (e.g. `-F` -> `php-fpm -F`)
 if [ "${1#-}" != "$1" ]; then
     set -- php-fpm "$@"
-fi
-
-if [ "$1" = 'php-fpm' ]; then
-    HEALTH_SERVER='/usr/local/bin/health-server'
-    CHECK_SCRIPT='/usr/local/bin/php-fpm-healthcheck'
-    if [ -x "$HEALTH_SERVER" ] && [ -x "$CHECK_SCRIPT" ]; then
-        health-server > /proc/1/fd/1 2> /proc/1/fd/2 &
-    else
-        echo 'health-server or php-fpm-healthcheck does not exist. liveness probe is unavailable.'
-    fi
 fi
 
 # Execute the main command
